@@ -38,12 +38,19 @@ function getLosingRoundNumFromWinnerBracket( currentRoundNum ) {
 	if(typeof currentRoundNum !== "number") {
 		throw new Error("Current round number must be a number");
 	}
+	if(currentRoundNum <= 1) {
+		throw new Error("Can't get losing round number from bracket winner")
+	}
+
+	if(currentRoundNum === 2) {
+		return 2;
+	}
 
 	return (currentRoundNum - 3) + currentRoundNum;
 }
 
 function getWinningMatchNumFromWinnerBracket( currentMatchNum ) {
-	if(typeof currentRoundNum !== "number") {
+	if(typeof currentMatchNum !== "number") {
 		throw new Error("Current match number must be a number");
 	}
 
