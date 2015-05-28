@@ -42,17 +42,14 @@ describe("Tournament Utilities", function() {
 	});
 
 	describe("getLosingRoundNumFromWinnerBracket", function() {
-		it("Round number for losing round 5 is 7", function() {
-			assert.equal(7, tournamentUtil.getLosingRoundNumFromWinnerBracket(5));
+		it("Round number for losing round 5 in winner bracket of 16 people is 7", function() {
+			assert.equal(7, tournamentUtil.getLosingRoundNumFromWinnerBracket(16, 5));
 		});
-		it("Round number for losing round 6 is 9", function() {
-			assert.equal(9, tournamentUtil.getLosingRoundNumFromWinnerBracket(6));
+		it("Round number for losing round 8 in winner bracket of 256 people is 14", function() {
+			assert.equal(14, tournamentUtil.getLosingRoundNumFromWinnerBracket(256, 8));
 		});
-		it("Round number for losing round 8 is 13", function() {
-			assert.equal(13, tournamentUtil.getLosingRoundNumFromWinnerBracket(8));
-		});
-		it("Round number for losing round 2 is 2", function() {
-			assert.equal(2, tournamentUtil.getLosingRoundNumFromWinnerBracket(2));
+		it("Round number for losing round 2 in winner bracket of 4 people is 2", function() {
+			assert.equal(2, tournamentUtil.getLosingRoundNumFromWinnerBracket(4, 2));
 		});
 	});
 
@@ -63,8 +60,32 @@ describe("Tournament Utilities", function() {
 		it("Winning match number for winner bracket after 4 is 2", function() {
 			assert.equal(2, tournamentUtil.getWinningMatchNumFromWinnerBracket(4));
 		});
-		it("Winning match number for winner bracket after 5 is 3", function() {
-			assert.equal(3, tournamentUtil.getWinningMatchNumFromWinnerBracket(5));
+		it("Winning match number for winner bracket after 8 is 4", function() {
+			assert.equal(4, tournamentUtil.getWinningMatchNumFromWinnerBracket(8));
+		});
+	});
+
+	describe("getNumOfMatchesForWinnerRound", function() {
+		it("Number of matches for round 5 in winner bracket is 8", function() {
+			assert.equal(8, tournamentUtil.getNumOfMatchesForWinnerRound(5));
+		});
+		it("Number of matches for round 9 in winner bracket is 128", function() {
+			assert.equal(128, tournamentUtil.getNumOfMatchesForWinnerRound(9));
+		});
+		it("Number of matches for round 2 in winner bracket is 1", function() {
+			assert.equal(1, tournamentUtil.getNumOfMatchesForWinnerRound(2));
+		});
+	});
+
+	describe("getFlippedLosingMatchNumFromWinnerBracket", function() {
+		it("Flipped losing match number of match 1 round 5 from winner bracket of 16 is 4", function() {
+			assert.equal(4, tournamentUtil.getFlippedLosingMatchNumFromWinnerBracket(16, 5, 1))
+		});
+		it("Flipped losing match number of match 2 round 5 from winner bracket of 16 is 4", function() {
+			assert.equal(4, tournamentUtil.getFlippedLosingMatchNumFromWinnerBracket(16, 5, 2))
+		});
+		it("Flipped losing match number of match 4 round 4 from winner bracket of 8 is 1", function() {
+			assert.equal(1, tournamentUtil.getFlippedLosingMatchNumFromWinnerBracket(8, 4, 4))
 		});
 	});
 });

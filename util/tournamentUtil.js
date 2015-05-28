@@ -34,19 +34,17 @@ function getWinningRoundNumFromWinnerBracket( currentRoundNum ) {
 	return --currentRoundNum;
 }
 
-function getLosingRoundNumFromWinnerBracket( currentRoundNum ) {
-	if(typeof currentRoundNum !== "number") {
-		throw new Error("Current round number must be a number");
-	}
-	if(currentRoundNum <= 1) {
-		throw new Error("Can't get losing round number from bracket winner")
+function getLosingRoundNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum ) {
+	if(typeof currentRoundNum !== "number" || currentRoundNum <= 1) {
+		throw new Error("Current round number must be a number above 1");
 	}
 
-	if(currentRoundNum === 2) {
-		return 2;
+	var totalNumOfRounds = getNumOfRoundsInWinnerBracket(totalNumOfPlayers);
+	if(currentRoundNum === totalNumOfRounds) {
+		return currentRoundNum + currentRoundNum - 3;
+	} else {
+		return currentRoundNum + currentRoundNum - 2;
 	}
-
-	return (currentRoundNum - 3) + currentRoundNum;
 }
 
 function getWinningMatchNumFromWinnerBracket( currentMatchNum ) {
@@ -57,28 +55,38 @@ function getWinningMatchNumFromWinnerBracket( currentMatchNum ) {
 	return mathUtil.nearestEvenNumberUp(currentMatchNum) / 2;
 }
 
-function getFlippedLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentMatchNum ) {
+function getLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum, currentMatchNum ) {
+ 	
+ 	var totalNumOfRounds = getNumOfRoundsInWinnerBracket(totalNumOfPlayers);
+
+ 	if(currentRoundNum === totalNumOfRounds-1) {
+ 		return currentMatchNum;
+ 	} else {
+ 		return mathUtil.nearestEvenNumberUp(currentMatchNumber) / 2;
+ 	}
+}
+/*
+function getFlippedLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum, currentMatchNum ) {
 	if(typeof totalNumOfPlayers !== "number" || !mathUtil.isPowerOf2(totalNumOfPlayers)) {
 		throw new Error("Total number of players must be a power of 2");
 	}
-	if(typeof currentMatchNum !== "number") {
-		throw new Error("Current match number must be a number");
+	if(typeof currentRoundNum !== "number" || typeof currentMatchNum !== "number") {
+		throw new Error("Current match and round number must be numbers");
 	}
 
-	return getNumOfMatchesForWinnerRound(totalNumOfPlayers + 1) - currentMatchNum;
+	var totalNumOfRounds = getNumOfRoundsInWinnerBracket(totalNumOfPlayers);
+
+	return getLosingMatchNumFromWinnerBracket(totalNumOfPlayers, currentRoundNum, currentMatchNum);
 }
 
-function getNumOfMatchesForWinnerRound( totalNumOfPlayers, currentRoundNum ) {
-	if(typeof totalNumOfPlayers !== "number" || !mathUtil.isPowerOf2(totalNumOfPlayers)) {
-		throw new Error("Total number of players must be a power of 2");
-	}
+function getNumOfMatchesForWinnerRound( currentRoundNum ) {
 	if(typeof currentRoundNum !== "number") {
 		throw new Error("Current round number must be a number");
 	}
 
-	var numOfPlayersInRound = getNumOfPlayersInWinnerRound(totalNumOfPlayers, currentRoundNum);
-	return mathUtil.timesCanBeDividedBy2(numOfPlayersInRound) + 1;
+	return Math.pow(2, currentRoundNum - 1) / 2;
 }
+
 
 function getNumOfPlayersInWinnerRound( totalNumOfPlayers, currentRoundNum ) {
 	if(typeof totalNumOfPlayers !== "number" || !mathUtil.isPowerOf2(totalNumOfPlayers)) {
@@ -109,6 +117,7 @@ function getNumOfPlayersInLoserRound( totalNumOfPlayers, currentRoundNum ) {
 		return (mathUtil.nearestEvenNumberDown(numOfRounds) - mathUtil.nearestEvenNumberDown(currentRoundNum)) / (totalNumOfPlayers/2);
 	}
 }
+*/
 
 module.exports = {
 	getNumOfRoundsInWinnerBracket : getNumOfRoundsInWinnerBracket,
@@ -116,8 +125,11 @@ module.exports = {
 	getWinningRoundNumFromWinnerBracket : getWinningRoundNumFromWinnerBracket,
 	getLosingRoundNumFromWinnerBracket : getLosingRoundNumFromWinnerBracket,
 	getWinningMatchNumFromWinnerBracket : getWinningMatchNumFromWinnerBracket,
+	getLosingMatchNumFromWinnerBracket : getLosingMatchNumFromWinnerBracket,
+	/*
 	getFlippedLosingMatchNumFromWinnerBracket: getFlippedLosingMatchNumFromWinnerBracket,
 	getNumOfMatchesForWinnerRound : getNumOfMatchesForWinnerRound,
 	getNumOfPlayersInWinnerRound : getNumOfPlayersInWinnerRound, 
 	getNumOfPlayersInLoserRound : getNumOfPlayersInLoserRound 
+	*/
 }
