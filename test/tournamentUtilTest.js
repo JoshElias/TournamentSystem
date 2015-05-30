@@ -65,6 +65,18 @@ describe("Tournament Utilities", function() {
 		});
 	});
 
+	describe("getLosingMatchNumFromWinnerBracket", function() {
+		it("Losing match number for winner bracket of 16 people after 1 is 1", function() {
+			assert.equal(1, tournamentUtil.getWinningMatchNumFromWinnerBracket(16, 1));
+		});
+		it("Losing match number for winner bracket of 16 people after 4 is 2", function() {
+			assert.equal(2, tournamentUtil.getWinningMatchNumFromWinnerBracket(16, 4));
+		});
+		it("Losing match number for winner bracket of 16 people after 8 is 4", function() {
+			assert.equal(4, tournamentUtil.getWinningMatchNumFromWinnerBracket(16, 8));
+		});
+	});
+/*
 	describe("getNumOfMatchesForWinnerRound", function() {
 		it("Number of matches for round 5 in winner bracket is 8", function() {
 			assert.equal(8, tournamentUtil.getNumOfMatchesForWinnerRound(5));
@@ -88,4 +100,5 @@ describe("Tournament Utilities", function() {
 			assert.equal(1, tournamentUtil.getFlippedLosingMatchNumFromWinnerBracket(8, 4, 4))
 		});
 	});
+*/
 });

@@ -3,12 +3,21 @@ var mongoose = require('mongoose'),
  
 // Deck schema
 var matchSchema = new Schema({
-	tournamentId: {type: Schema.Types.ObjectId, ref:'Tournament'},
-	player1Id: {type: Schema.Types.ObjectId, ref:'User'},
-	player2Id: {type: Schema.Types.ObjectId, ref:'User'},
+	tournament: {type: Schema.Types.ObjectId, ref:"Tournament"},
+	bracket: {type: Schema.Types.ObjectId, ref:"Bracket"},
+	coordinates: [{type: Number}],
+	winningMatch: {type: Schema.Types.ObjectId},
+	losingMatch: {type:Schema.Types.ObjectId},
+	player1: {type: Schema.Types.ObjectId, ref:"User"},
+	player2: {type: Schema.Types.ObjectId, ref:"User"},
+	player1ResultImgUrl: {type: String},
+	player2ResultImgUrl: {type: String},
     regionName: {type:String, default:'na'},
+   	chatHistory: {type: String},
+   	deckBans: [{type: Schema.Types.ObjectId, ref:"Deck"}],
     winnerId: {type: Schema.Types.ObjectId, ref:'User'},
-    createdDate: Date,
+    createdTime: {type: Date},
+    endTime: {type:Date}
 });
 
 var Match = mongoose.model('Match', matchSchema);
