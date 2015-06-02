@@ -1,5 +1,5 @@
+var tournamentConstants = require("./../constants/tournamentConstants");
 var mathUtil = require("./mathUtil");
-
 
 // TOURNAMENT HELPERS
 
@@ -12,7 +12,7 @@ function getNumOfRoundsInWinnerBracket( totalNumOfPlayers ) {
 		throw new Error("Total number of players must be a power of 2");
 	}
 
-	return mathUtil.timesCanBeDividedBy2(totalNumOfPlayers) + 1;
+	return mathUtil.timesCanBeDividedBy2(totalNumOfPlayers);
 }
 
 function getNumOfRoundsInLoserBracket( totalNumOfPlayers ) {
@@ -20,30 +20,34 @@ function getNumOfRoundsInLoserBracket( totalNumOfPlayers ) {
 		throw new Error("Total number of players must be a power of 2");
 	}
 
-	return (mathUtil.timesCanBeDividedBy2(totalNumOfPlayers / 2) * 2) + 1;
+	return (mathUtil.timesCanBeDividedBy2(totalNumOfPlayers / 2) * 2);
 }
 
 function getWinningRoundNumFromWinnerBracket( currentRoundNum ) {
-	if(typeof currentRoundNum !== "number") {
-		throw new Error("Current round number must be a number");
+	if(typeof currentRoundNum !== "number" || currentRoundNum < 1) {
+		throw new Error("Can't get winning round number with invalid round number");
 	}
-	if(currentRoundNum <= 1) {
-		return 1;
+	if(currentRoundNum === 1) {
+		throw new Error("Can't get winning round number of winning round");
 	}
 
 	return --currentRoundNum;
 }
 
 function getLosingRoundNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum ) {
-	if(typeof currentRoundNum !== "number" || currentRoundNum <= 1) {
-		throw new Error("Current round number must be a number above 1");
+	if(typeof totalNumOfPlayers !== "number" || !mathUtil.isPowerOf2(totalNumOfPlayers)) {
+		throw new Error("Total number of players must be a power of 2");
+	}
+
+	if(typeof currentRoundNum !== "number" || currentRoundNum < 1) {
+		throw new Error("Current round number is invalid");
 	}
 
 	var totalNumOfRounds = getNumOfRoundsInWinnerBracket(totalNumOfPlayers);
 	if(currentRoundNum === totalNumOfRounds) {
-		return currentRoundNum + currentRoundNum - 3;
-	} else {
 		return currentRoundNum + currentRoundNum - 2;
+	} else {
+		return currentRoundNum + currentRoundNum - 1;
 	}
 }
 
@@ -58,12 +62,61 @@ function getWinningMatchNumFromWinnerBracket( currentMatchNum ) {
 function getLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum, currentMatchNum ) {
  	
  	var totalNumOfRounds = getNumOfRoundsInWinnerBracket(totalNumOfPlayers);
+ 	console.log("Number of rounds for "+totalNumOfPlayers+" is "+totalNumOfRounds);
 
  	if(currentRoundNum === totalNumOfRounds-1) {
  		return currentMatchNum;
  	} else {
- 		return mathUtil.nearestEvenNumberUp(currentMatchNumber) / 2;
+ 		return mathUtil.nearestEvenNumberUp(currentMatchNum) / 2;
  	}
+}
+
+function getWinningMatchCoordsForSingleElim( matchCoords ) {
+	if(typeof mathCoords !== "string") {
+		throw new Error("Match coordinates are invalid");
+	}
+
+	var coordArr; = mathCoords.split("::");
+	var bracketNum = coordArr[0];
+	var roundNum = coordArr[1];
+	var matchNum = coordArr[2];
+
+	if(--roundNum < 1) {
+		throw new Error("Can't get winning match coords from last match");
+	}
+	matchNum = getWinningMatchNumFromWinnerBracket(matchNum);
+
+	return "1::"+roundNum+"::"+matchNum;
+}
+
+function getWinningMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
+	if(typeof mathCoords !== "string") {
+		throw new Error("Match coordinates are invalid");
+	}
+
+	var coordArr; = mathCoords.split("::");
+	var roundNum = coordArr[1];
+	var matchNum = coordArr[2];
+
+	roundNum = getWinningRoundNumFromWinnerBracket(roundNum);
+	matchNum = getWinningMatchNumFromWinnerBracket(matchNum);
+
+	return "1::"+roundNum+"::"+matchNum;
+}
+
+function getLosingMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
+	if(typeof mathCoords !== "string") {
+		throw new Error("Match coordinates are invalid");
+	}
+
+	var coordArr; = mathCoords.split("::");
+	var roundNum = coordArr[1];
+	var matchNum = coordArr[2];
+
+	roundNum = getLosingRoundNumFromWinnerBracket(totalNumOfPlayers, roundNum);
+	matchNum = getLosingMatchNumFromWinnerBracket(totalNumOfPlayers, roundNum, matchNum);
+
+	return "2::"+roundNum+"::"+matchNum;
 }
 /*
 function getFlippedLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum, currentMatchNum ) {
@@ -119,6 +172,42 @@ function getNumOfPlayersInLoserRound( totalNumOfPlayers, currentRoundNum ) {
 }
 */
 
+function getNumOfMatchesForSingleElim(numOfPlayers) {
+	if(typeof numOfPlayers !== "number" || !mathUtil.isPowerOf2(numOfPlayers)) {
+		throw new Error("Can't get number of matches with invalid number of players");
+	}
+
+	return numOfPlayers - 1;
+}
+
+function getNumOfMatchesForDoubleElim(numberOfPlayers) {
+	if(typeof numOfPlayers !== "number" || !mathUtil.isPowerOf2(numOfPlayers)) {
+		throw new Error("Can't get number of matches with invalid number of players");
+	}
+
+	return getNumOfMatchesForSingleElim(numOfPlayers) + (numOfPlayers - 2) + 2;
+}
+
+
+function getNumOfMatchesForTournament(numOfPlayers, tournamentType) {
+	if(typeof numOfPlayers !== "number" || !mathUtil.isPowerOf2(numOfPlayers)) {
+		throw new Error("Can't get number of matches with invalid number of players");
+	}
+	if(tournamentConstants.TOURNAMENT_TYPES.indexOf(tournamentType) === -1) {
+		throw new Error("Can't get number of matches with invalid tournament type");
+	}
+
+	if(tournamentType === "singleElim") {
+		return getNumOfMatchesForSingleElim(numOfPlayers);
+	} else if(tournamentType === "doubleElim") {
+		return getNumOfMatchesForDoubleElim(numOfPlayers);
+	} else if(tournamentType === "swiss") {
+		throw new Error("I don't fucking know!");
+	} else {
+		throw new Error("Can't get number of matches with invalid tournament type");
+	}
+}
+
 module.exports = {
 	getNumOfRoundsInWinnerBracket : getNumOfRoundsInWinnerBracket,
 	getNumOfRoundsInLoserBracket: getNumOfRoundsInLoserBracket,
@@ -126,6 +215,14 @@ module.exports = {
 	getLosingRoundNumFromWinnerBracket : getLosingRoundNumFromWinnerBracket,
 	getWinningMatchNumFromWinnerBracket : getWinningMatchNumFromWinnerBracket,
 	getLosingMatchNumFromWinnerBracket : getLosingMatchNumFromWinnerBracket,
+
+	getNumOfMatchesForSingleElim : getNumOfMatchesForSingleElim,
+	getNumOfMatchesForDoubleElim : getNumOfMatchesForDoubleElim
+
+	getWinningMatchCoordsForSingleElim : getWinningMatchCoordsForSingleElim,
+	
+	getWinningMatchCoordsForDoubleElim : getWinningMatchCoordsForDoubleElim,
+	getLosingMatchCoordsForDoubleElim : getLosingMatchCoordsForDoubleElim,
 	/*
 	getFlippedLosingMatchNumFromWinnerBracket: getFlippedLosingMatchNumFromWinnerBracket,
 	getNumOfMatchesForWinnerRound : getNumOfMatchesForWinnerRound,

@@ -54,16 +54,4 @@ describe("Math Utilities", function() {
 			assert.equal(554, mathUtil.nearestEvenNumberDown(555));
 		});
 	});
-
-	describe("nearestEvenNumberUp", function() {
-		it("The nearest even number up from 7 is 8", function() {
-			assert.equal(8, mathUtil.nearestEvenNumberUp(7));
-		});
-		it("The nearest even number up from 143 is 144", function() {
-			assert.equal(144, mathUtil.nearestEvenNumberUp(143));
-		});
-		it("The nearest even number up from 555 is 556", function() {
-			assert.equal(556, mathUtil.nearestEvenNumberUp(555));
-		});
-	});
 });

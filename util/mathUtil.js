@@ -18,6 +18,14 @@ function nextPowerOf2(num) {
 	return num;
 }
 
+function lastPowerOf2(num) {
+	if(isPowerOf2(num)) {
+		return num;
+	} else{
+		return nextPowerOf2(num) / 2;
+	}
+}
+
 function timesCanBeDividedBy2(num) {
 	return Math.floor(Math.log(num)/Math.log(2));
 }

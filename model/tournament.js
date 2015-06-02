@@ -5,11 +5,12 @@ var mongoose = require('mongoose'),
 var tournamentSchema = new Schema({
 	name: {type:String, default: "Unnamed tournament"},
 	description: {type:String, default: ""},
-    creator: {type: Schema.Types.ObjectId},
-    players: [{type: Schema.Types.ObjectId, ref:"User"}],
-    playerWhitelist: [{type:Schema.Types.ObjectId, ref:"User"}],
-    playerBlacklist: [{type:Schema.Types.ObjectId, ref:"User"}],
-    brackets: [{type:Schema.Types.ObjectId, ref: "Bracket"}],
+    creatorId: {type: Schema.Types.ObjectId},
+    tournamentType: {type:String, default:"singleElim"},
+    playerIds: [{type: Schema.Types.ObjectId, ref:"User"}],
+    playerIdWhitelist: [{type:Schema.Types.ObjectId, ref:"User"}],
+    playerIdBlacklist: [{type:Schema.Types.ObjectId, ref:"User"}],
+    bracketIds: [{type:Schema.Types.ObjectId, ref: "Bracket"}],
  	regionName: {type:String, default:"na"},
     prizePool: [{type:Number}],
     creationTime: {type:Date},
@@ -20,7 +21,7 @@ var tournamentSchema = new Schema({
     cardBans: [{type:Schema.Types.ObjectId, ref:"Card"}],
     active: {type: Boolean, default: false},
     feature: {type: Boolean, default: false},
-    admins: [{type:Schema.Types.ObjectId, ref: "User"}]
+    adminIds: [{type:Schema.Types.ObjectId, ref: "User"}]
 });
 
 var Tournament = mongoose.model('Tournament', tournamentSchema);

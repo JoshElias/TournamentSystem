@@ -2,37 +2,59 @@
 var express = require("express");
 var app = express();
 var multer = require("multer");
-var tournament = require("./tournament/tournament");
+//var tournament = require("./tournament/tournament");
 //var tournamentRouter = require("./tournament/tournamentRouter");
 
 var TEST_ADMIN_ID = "54847bba9c76c20e9149f5d2";
 var TEST_TOURNAMENT_ID = "5568bdc9465dcb282120ad23";
 
+// tournamentTester0-31
 
+
+
+var numOfRounds = 4;
+var numOfMatchesThisRound = 1;
+for(var i = 0; i < numOfRounds; i++) {
+	for(var j = 0; j < numOfMatchesThisRound; j++) {
+		console.log("1,"+(i+1)+","+(j+1));
+	}
+	numOfMatchesThisRound *= 2;
+}
+
+
+/*
 var UserSchema = require("./model/user");
-var addUserFuncs = [];
-function addUserFunc(i) {
-	addUserFuncs.push(function(callback) {
-		var newTestUser = new UserSchema({
-			email: "tournamentTester"+i+"@gmail.com",
-			username: "tournamentTester"+i,
-			bnetID: "fakeId",
-			paypalID: "fakeId",
-			twitchID: "fakeId",
-			tournamentBlacklist: false
+var async = require("async");
+async.waterfall([
+	function(callback) {
+		UserSchema.find({username:{$regex:/tournamentTester[0-9]?[0-9]/g}}, function(err, users) {
+			if(err) callback(err);
+			else {
+				console.log("Found "+users.length+" users");
+				callback(undefined, users);
+			}
 		});
-		newTestUser.save(callback);
-	});
-}
-for(var i = 0; i < 32; i++) {
-	addUserFunc(i);
-}
-require("async").series(addUserFuncs, function(err) {
+	},
+	function(users, callback) {
+		var addPlayerFuncs = [];
+		function addPlayerFunc(i) {
+			addPlayerFuncs.push(function(_callback) {
+				tournament.addPlayer(users[i]._id.toString(), "5568bdc9465dcb282120ad23", _callback);
+			});
+		}
+		for(var i = 0; i < users.length; i++) {
+			addPlayerFunc(i);
+		}
+		async.series(addPlayerFuncs, callback);
+	}],
+function(err, results) {
 	if(err) console.log(err);
 	else {
-		console.log("Successfully added test users");
+		console.log("Successfully added players: "+results);
 	}
 });
+*/
+
 
 /*
 // Middleware

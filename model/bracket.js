@@ -4,14 +4,16 @@ var mongoose = require('mongoose'),
 // Deck schema
 var bracketSchema = new Schema({
   name: {type:Number},
+  description: {type:String},
   bracketType: {type:String},
   bestOf: {type:String},
-  cardBans: [{type: Schema.Types.ObjectId, ref:"Card"}],
-	tournament: {type: Schema.Types.ObjectId, ref:"Tournament"},
-  players: [{type: Schema.Types.ObjectId, ref: "Player"}],
-	bracket: {type: Schema.Types.ObjectId, ref:"Bracket"},
+  cardBanIds: [{type: Schema.Types.ObjectId, ref:"Card"}],
+	tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},
+  matchIds: {type: Schema.Types.ObjectId, ref: "Match"},
+  playerIds: [{type: Schema.Types.ObjectId, ref: "Player"}],
   prizePool: [{type:Number}],
-  winner: {type: Schema.Types.ObjectId, ref: "Player"},
+  winnerId: {type: Schema.Types.ObjectId, ref: "Player"},
+  creatorId: {type: Schema.Types.ObjectId, ref: "User"},
   createdTime: {type: Date},
   endTime: {type:Date}
 });
