@@ -19,6 +19,7 @@
     "express": "^4.12.4",
     "mocha": "^2.2.5",
     "mongoose": "^4.0.4",
-    "multer": "^0.1.8"
+    "multer": "^0.1.8",
+    "underscore": "^1.8.3"
   }
 }

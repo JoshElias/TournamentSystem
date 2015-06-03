@@ -1,10 +1,12 @@
 var async = require("async");
 var mongoose = require("mongoose");
+var _ = require("underscore");
 var mathUtil = require("./util/mathUtil");
 var tournamentUtil = require("./util/tournamentUtil");
 var UserSchema = require("./../model/user");
 var TournamentSchema = require("./../model/tournament");
 var PlayerSchema = require("./../model/player");
+var MatchSchema = require("./../model/match");
 var util = require("util");
 
 
@@ -237,7 +239,21 @@ function addBracket( adminId, tournamentId, options, finalCallback ) {
 
 }
 
-function seedBracket(bracketId, finalCallback) {
+
+// Seeds a bracket with the players coming from another bracket or being added manually.
+// If no sources are provided then we use all the players registered for the tournament.
+// 
+//	
+// 	bracketId : (String),
+// 	playerIds : (Array)
+// 	options : {
+// 		sourcePlayerIds : (Array)
+//		sourceBracketId: (String)
+// 		seedOrder: (String) // ascending/descending
+//  }
+// 	finalCallback : (Callback) // (err, newBracket)
+//
+function seedBracket(bracketId, options, finalCallback) {
 	// Validate arguments
 	if(typeof bracketId !== "object") {
 		finalCallback("Can't seed bracket with invalid id");
@@ -248,16 +264,69 @@ function seedBracket(bracketId, finalCallback) {
 		// Get the associated tournament
 		function(callback) {
 			BracketSchema.findById(bracketId)
-			.populate("tournamnetId")
+			.populate("tournamentId")
 			.exec(function(err, bracket) {
 				callback(err, bracket.tournamentId);
 			});
 		},
-		// Create the necessary matches
+		// Compile the list of player Ids from the sources provided
 		function(tournament, callback) {
+			
+			// No options means we just take the playerIds from the tournament
+			if(typeof options !== "object") {
+				callback(undefined, tournament, tournament.playersId);
+			// Check if the options indicated any sources
+			} else {
+				var playerIds = [];
+				async.series([
+					// Add source player Ids
+					function(innerCallback) {
+						if(Array.isArray(options.sourcePlayerIds)) {
+							Array.prototype.push.apply(playerIds, options.sourcePlayerIds);
+						}
+						innerCallback();
+					},
+					// Add player Ids from source bracket
+					function(innerCallback) {
+						if(typeof options.sourceBracketId === "string") {
+							BracketSchema.findById(options.sourceBracketId)
+							.select("playerIds")
+							.exec(function(err, bracket) {
+								if(err) innerCallback(err);
+								else if(!bracket) innerCallback();
+								else {
+									Array.prototype.push.apply(playerIds, bracket.playerIds);
+									innerCallback();
+								}
+							})
+						} else {
+							innerCallback();
+						}
+					}],
+				function(err, results) {
+					callback(err, tournament, playerIds);
+				});
+			}
+		},
+		// Filter out duplicates and players not registered for this tournament
+		function(tournament, playerIds, callback) {
 			try {
-				console.log("Number of players registered for tournament: "+tournament.players.length);
-				var tournamentSize = mathUtil.lastPowerOf2(tournament.players.length);
+				var uniquePlayerIds = _.uniq(playerIds);
+				for(var i = uniquePlayerIds.length -1; i >= 0 ; i--) {
+					if(tournament.playerIds.indexOf(uniquePlayerIds[i]) === -1) {
+	    				uniquePlayerIds.splice(i, 1);
+					}
+				}
+				callback(undefined, tournament, uniquePlayerIds);
+			} catch(err) {
+				callback(err);
+			}
+		},
+		// Create the necessary matches
+		function(tournament, playerIds, callback) {
+			try {
+				console.log("Number of players registered for tournament: "+playerIds.length);
+				var tournamentSize = mathUtil.lastPowerOf2(playerIds.length);
 				console.log("Tournament size: "+tournamentSize);
 
 				var matchDict = {};
@@ -277,11 +346,11 @@ function seedBracket(bracketId, finalCallback) {
 						numOfMatchesThisRound *= 2;
 					}
 				} else if(tournament.tournamentType === "doubleElim") {
-
+					callback("doubleElim not yet implimented");
 				} else if(tournament.tournamentType === "swiss") {
-
+					callback("swiss not yet implimented");
 				} else {
-
+					callback("swiss not yet implimented");
 				}
 			} catch(err) {
 				callback(err);
@@ -289,24 +358,181 @@ function seedBracket(bracketId, finalCallback) {
 
 			callback(undefined, matchDict);
 		},
-		// Create  
+		// Save the matches in the database 
 		function(matchDict, callback) {
-
-			for(var key in matchDict) {
-				tournamentUtil.get
+			var saveMatchFuncs = {};
+			for(for key in matchDict) {
+				saveMatchFuncs[key] = function(key) {
+					return function(_callback) {
+						var newMatch = new MatchSchema(matchDict[key]);
+						newMatch.save(_callback);
+					}
+				});
 			}
-			
+			async.series(saveMatchFuncs, callback);	
 		},
 		// Populate the matches necessary for the tournament type
-		function(tournament, callback) {
+		function(newMatches, callback) {
 			tournament.tournamentType 
 		}],
 	function(err, results) {
 
 	});
+}
 
 
+function calculateBuchholzScore( playerId, finalCallback ) {
+	if(!Array.isArray(playerIds)) {
+		finalCallback("Unable to rank players with invalid array");
+		return;
+	}
 
+	var playerDict = {};
+
+	async.waterfall([
+		// Get all the player ids from this tournament
+		function(callback) {
+			TournamentSchema.findById(tournamentId)
+			.select("playerIds")
+			.populate("playerIds")
+			.exec(function(err, tournament) {
+				if(err) callback(err);
+				else if(!tournament) callback()
+				else {
+					for(var i = 0; i < tournament.playerIds.length; i++) {
+						var player = tournament.playerIds[i];
+						playerDict[player._id] = player;
+					}
+					callback(undefined, tournament.playerIds);
+				}
+			});
+		},
+		// Filter out duplicates
+		function(tournamentPlayerIds, callback) {
+			try {
+				var uniquePlayerIds = _.uniq(tournamentPlayerIds);
+				callback(undefined, uniquePlayerIds);
+			} catch(err) {
+				callback(err);
+			}
+		},
+		// Iterate through players and generate buchholtz score based on their opponents
+		function(uniquePlayerIds, callback) {
+
+			async.each(uniquePlayerIds, function(playerId, eachCallback) {
+				var player = playerDict[playerId];
+				
+				async.waterfall([
+					// Get a sorted list of player's opponents by raw score
+					function(seriesCallback) {
+						var playerOpponentIds = [];	
+						async.each(player.matchHistory, function(matchId) {
+							MatchSchema.findById(matchId)
+							.select("player1Id player2Id")
+							.exec(function(err, match) {
+								if(err) seriesCallback(err);
+								else {
+									var opponentEntry = {
+										result: (match.winnerId === playerId)
+									};
+									if(match.player1Id === playerId) {
+										opponentEntry.opponentId = match.player2Id;
+									} else if(match.player2Id === playerId) {
+										opponentEntry.opponentId = match.player1Id;
+									} else {
+										seriesCallback("Unable to find player in match");
+										return;
+									}
+									playerOpponentIds.push(opponentEntry);
+									seriesCallback();
+								}
+							});
+						}, function(err) {
+							seriesCallback(err, playerOpponentIds);
+						});
+					},
+					// Sort	the opponents by raw score, do average	
+					function(playerOpponentIds, seriesCallback) {
+						try {
+							// Sort opponents by raw score
+							var sortedOpponentIds = _.sortBy(playerOpponentIds, function(opponentId) {
+								return playerDict[opponentId].rawScore;
+							});
+
+							// Get average score of all team mates
+							var scoreTotal = 0;
+							for(var i = 0; i < sortedOpponentIds; i++) {
+								scoreTotal += playerDict[sortedOpponentIds].rawScore;
+							}
+							scoreTotal += player.rawScore;
+							var averageScore = scoreTotal/(sortedOpponentIds+1);
+
+							// Calculate Buchholz score
+							var buchholzScore = 0;
+							if(player.rawScore > averageScore) {
+								sortedOpponentIds.shift();
+							} else if(player.rawScore < averageScore) {
+								sortedOpponentIds.pop();
+							} else {
+								sortedOpponentIds.shift();
+								sortedOpponentIds.pop();
+							}	
+							// After filtering top and bottom opponent scores, recalculate score
+							for(var i = 0; i < sortedOpponentIds; i++) {
+								if(sortedOpponentIds.result) {
+									buchholzScore++;
+								}
+							}
+							playerDict[playerId].buchholzScore = buchholzScore;
+
+							seriesCallback(undefined, buchholzScore);
+						} catch(err) {
+							seriesCallback(err);
+						}
+					},
+					// Update the player's buchholz score
+					function(buchholzScore, seriesCallback) {
+						PlayerSchema.findByIdAndUpdate(playerId, {buchholzScore:buchholzScore}, function(err, result) {
+							seriesCallback(err);
+						});
+					}],
+				function(err, results) {
+					eachCallback(err);
+				});
+
+			}, function(err) {
+				callback(err, uniquePlayerIds);
+			});
+		}],
+	function(err, uniquePlayerIds) {
+		if(err) finalCallback(err);
+		else {
+			// Sort player Ids by buccholz score
+			var sortedPlayerIds = _sortBy(uniquePlayerIds, function(playerId) {
+				return playerDict[playerId].buchholzScore;
+			});
+			finalCallback(undefined, sortedPlayerIds);
+		}
+	});
+}
+
+function rankPlayersInBracket( bracketId, playerIds, finalCallback ) {
+	if(!Array.isArray(playerIds)) {
+		finalCallback("Unable to rank players with invalid array");
+		return;
+	}
+
+	async.series([
+		// Get all the player ids from this tournament
+		function(callback) {
+
+		},
+		function(callback) {
+
+		}],
+	function(err, results) {
+
+	});
 }
 
 function startTournament( tournamentId, finalCallback ) {
