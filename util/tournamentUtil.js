@@ -76,7 +76,7 @@ function getWinningMatchCoordsForSingleElim( matchCoords ) {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr; = mathCoords.split("::");
+	var coordArr = matchCoords.split("::");
 	var bracketNum = coordArr[0];
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
@@ -207,6 +207,7 @@ function getNumOfMatchesForTournament(numOfPlayers, tournamentType) {
 		throw new Error("Can't get number of matches with invalid tournament type");
 	}
 }
+
 
 module.exports = {
 	getNumOfRoundsInWinnerBracket : getNumOfRoundsInWinnerBracket,

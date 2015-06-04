@@ -3,11 +3,12 @@ var mongoose = require('mongoose'),
  
 // Deck schema
 var playerSchema = new Schema({
-	user: {type: Schema.Types.ObjectId, ref:"User"},
-  match: {type: Schema.Types.ObjectId, ref:"Match"},
-	bracket: {type: Schema.Types.ObjectId, ref:"Bracket"},
-  tournament: {type: Schema.Types.ObjectId, ref:"Tournament"},
-  decks: [{type: Schema.Types.ObjectId, ref:"Deck"}],
+	userId: {type: Schema.Types.ObjectId, ref:"User"},
+  currentMatch: {type: Schema.Types.ObjectId, ref:"Match"},
+  matchIdHistory: [{type: Schema.Types.ObjectId, ref:"Match"}],
+	bracketId: {type: Schema.Types.ObjectId, ref:"Bracket"},
+  tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},
+  deckIds: [{type: Schema.Types.ObjectId, ref:"Deck"}],
   rawScore: {type: Number, default: 0},
   buchholzScore: {type: Number, default: 0},
   wins: {type:Number, default: 0},
