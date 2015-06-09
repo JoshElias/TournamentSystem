@@ -6,6 +6,7 @@ var bracketSchema = new Schema({
   name: {type:Number},
   description: {type:String},
   bracketType: {type:String},
+  nextBracketId: {type: Schema.Types.ObjectId, ref: "Bracket"},
   bestOf: {type:String},
   cardBanIds: [{type: Schema.Types.ObjectId, ref:"Card"}],
 	tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},
@@ -18,6 +19,6 @@ var bracketSchema = new Schema({
   endTime: {type:Date}
 });
 
-var Match = mongoose.model('Bracket', bracketSchema);
+var Bracket = mongoose.model('Bracket', bracketSchema);
 
-module.exports = Match;
+module.exports = Bracket;

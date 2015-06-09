@@ -4,7 +4,7 @@ var mongoose = require('mongoose'),
 // Deck schema
 var playerSchema = new Schema({
 	userId: {type: Schema.Types.ObjectId, ref:"User"},
-  currentMatch: {type: Schema.Types.ObjectId, ref:"Match"},
+  currentMatchId: {type: Schema.Types.ObjectId, ref:"Match"},
   matchIdHistory: [{type: Schema.Types.ObjectId, ref:"Match"}],
 	bracketId: {type: Schema.Types.ObjectId, ref:"Bracket"},
   tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},

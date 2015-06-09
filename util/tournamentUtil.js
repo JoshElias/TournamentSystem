@@ -71,12 +71,12 @@ function getLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum,
  	}
 }
 
-function getWinningMatchCoordsForSingleElim( matchCoords ) {
-	if(typeof mathCoords !== "string") {
+function getWinningMatchCoordsForSingleElim( matchKey ) {
+	if(typeof matchKey !== "string") {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr = matchCoords.split("::");
+	var coordArr = matchKey.split(tournamentConstants.KEY_SEPARATOR);
 	var bracketNum = coordArr[0];
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
@@ -86,7 +86,7 @@ function getWinningMatchCoordsForSingleElim( matchCoords ) {
 	}
 	matchNum = getWinningMatchNumFromWinnerBracket(matchNum);
 
-	return "1::"+roundNum+"::"+matchNum;
+	return "1"+tournamentConstants.KEY_SEPARATOR+"roundNum"+tournamentConstants.KEY_SEPARATOR+"matchNum";
 }
 
 function getWinningMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
@@ -94,14 +94,14 @@ function getWinningMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr; = mathCoords.split("::");
+	var coordArr; = mathCoords.split(tournamentConstants.KEY_SEPARATOR);
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
 
 	roundNum = getWinningRoundNumFromWinnerBracket(roundNum);
 	matchNum = getWinningMatchNumFromWinnerBracket(matchNum);
 
-	return "1::"+roundNum+"::"+matchNum;
+	return "1"+tournamentConstants.KEY_SEPARATOR+"roundNum"+tournamentConstants.KEY_SEPARATOR+"matchNum";
 }
 
 function getLosingMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
@@ -109,14 +109,14 @@ function getLosingMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr; = mathCoords.split("::");
+	var coordArr; = mathCoords.split(tournamentConstants.KEY_SEPARATOR);
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
 
 	roundNum = getLosingRoundNumFromWinnerBracket(totalNumOfPlayers, roundNum);
 	matchNum = getLosingMatchNumFromWinnerBracket(totalNumOfPlayers, roundNum, matchNum);
 
-	return "2::"+roundNum+"::"+matchNum;
+	return "2"+tournamentConstants.KEY_SEPARATOR+"roundNum"+tournamentConstants.KEY_SEPARATOR+"matchNum";
 }
 /*
 function getFlippedLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum, currentMatchNum ) {
@@ -209,6 +209,34 @@ function getNumOfMatchesForTournament(numOfPlayers, tournamentType) {
 }
 
 
+function getBracketSideFromMatchKey( key ) {
+	if(typeof key !== "string") {
+		throw new Error("Unable to get bracket side with invalid key");
+	}
+
+	var keyArr = key.split(tournamentConstants.KEY_SEPARATOR);
+	return keyArr[0];
+}
+
+function getBracketRoundFromMatchKey( key ) {
+	if(typeof key !== "string") {
+		throw new Error("Unable to get bracket round with invalid key");
+	}
+
+	var keyArr = key.split(tournamentConstants.KEY_SEPARATOR);
+	return keyArr[1];
+}
+
+function getBracketMatchFromMatchKey( key ) {
+	if(typeof key !== "string") {
+		throw new Error("Unable to get bracket match with invalid key");
+	}
+
+	var keyArr = key.split(tournamentConstants.KEY_SEPARATOR);
+	return keyArr[2];
+}
+
+
 module.exports = {
 	getNumOfRoundsInWinnerBracket : getNumOfRoundsInWinnerBracket,
 	getNumOfRoundsInLoserBracket: getNumOfRoundsInLoserBracket,
@@ -230,4 +258,7 @@ module.exports = {
 	getNumOfPlayersInWinnerRound : getNumOfPlayersInWinnerRound, 
 	getNumOfPlayersInLoserRound : getNumOfPlayersInLoserRound 
 	*/
+	getBracketSideFromMatchKey : getBracketSideFromMatchKey,
+	getBracketRoundFromMatchKey : getBracketRoundFromMatchKey,
+	getBracketMatchFromMatchKey : getBracketMatchFromMatchKey
 }

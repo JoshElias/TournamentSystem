@@ -217,26 +217,47 @@ function addBracket( adminId, tournamentId, options, finalCallback ) {
 
 	async.waterfall([
 		// Check if this user has admin rights to this tournament
-		function(callback) {
+		function(seriesCallback) {
 			validateAdminId(adminId, tournamentId);
 		},
 		// Create bracket
-		function(callback) {
+		function(seriesCallback) {
 			var newBracket = new BracketSchema(bracketArgs);
 			newBracket.save(function(err) {
 				callback(err, newBracket);
 			});
 		},
 		// Add bracket to tournament
-		function(newBracket, callback) {	
-			TournamentSchema.findByIdAndUpdate(tournamentId, {$push:{bracketIds:newBracket._id}}, function(err, results) {
-				callback(err);
+		function(newBracket, seriesCallback) {	
+			TournamentSchema.findByIdAndUpdate(tournamentId, {$push:{bracketIds:newBracket._id}}, seriesCallback);
+		},
+		// Check if this deck this tournament has starting and ending bracket id
+		function(seriesCallback) {
+			TournamentSchema.findById(tournamnetId)
+			.select("startingBracketId endingBracketId")
+			.exec(function(err, tournamnent) {
+				if(err) seriesCallback(err);
+				else {
+					var tournamentChanges = {};
+					if(typeof tournamnet.startingBracketId === "undefined" || tournament.startingBracketId === "") {
+						tournamentChanges.startingBracketId = bracketId
+					}
+					if(typeof tournamnet.endingBracketId === "undefined" || tournamnet.endingBracketId === "") {
+						tournamentChanges.endingBracketId = bracketId;
+					}
+					seriesCallback(undefined, tournamentChanges);
+				}
 			});
-		}],
-	function(err, results) {
-		finalCallback(err);
-	});
-
+		},
+		// Update the starting and ending bracket id if need be
+		function(tournamentChanges, seriesCallback) {
+			if(_.isEmpty(tournamentChanges)) {
+				seriesCallback();
+			} else {
+				TournamentSchema.findByIdAndUpdate(tournamentId, tournamentChanges, seriesCallback);
+			}
+		}], 
+	finalCallback);
 }
 
 
@@ -244,8 +265,7 @@ function addBracket( adminId, tournamentId, options, finalCallback ) {
 // If no sources are provided then we use all the players registered for the tournament.
 // 
 //	
-// 	bracketId : (String),
-// 	playerIds : (Array)
+// 	bracketId : (String)
 // 	options : {
 // 		sourcePlayerIds : (Array)
 //		sourceBracketId: (String)
@@ -260,56 +280,61 @@ function seedBracket(bracketId, options, finalCallback) {
 		return;
 	}
 
+	// Database cache
+	var playerDict = {};
+	var matchDict = {};
+
 	async.waterfall([
 		// Get the associated tournament
-		function(callback) {
+		function(seriesCallback) {
 			BracketSchema.findById(bracketId)
 			.populate("tournamentId")
 			.exec(function(err, bracket) {
-				callback(err, bracket.tournamentId);
+				seriesCallback(err, bracket.tournamentId);
 			});
 		},
 		// Compile the list of player Ids from the sources provided
-		function(tournament, callback) {
-			
-			// No options means we just take the playerIds from the tournament
-			if(typeof options !== "object") {
-				callback(undefined, tournament, tournament.playersId);
-			// Check if the options indicated any sources
-			} else {
-				var playerIds = [];
-				async.series([
-					// Add source player Ids
-					function(innerCallback) {
-						if(Array.isArray(options.sourcePlayerIds)) {
-							Array.prototype.push.apply(playerIds, options.sourcePlayerIds);
-						}
+		function(tournament, seriesCallback) {
+			var playerIds = [];
+
+			async.series([
+				// No options means we just take the playerIds from the tournament
+				function(innerCallback) {
+					if(typeof options !== "object") {
+						Array.prototype.push.apply(playerIds, options.sourcePlayerIds);
+						innerCallback(true);
+					}
+					innerCallback();
+				}, 
+				// Add source player Ids
+				function(innerCallback) {
+					if(Array.isArray(options.sourcePlayerIds)) {
+						Array.prototype.push.apply(playerIds, options.sourcePlayerIds);
+					}
+					innerCallback();
+				},
+				function(innerCallback) {
+					if(typeof options.sourceBracketId === "string") {
+						BracketSchema.findById(options.sourceBracketId)
+						.select("playerIds")
+						.exec(function(err, bracket) {
+							if(err) innerCallback(err);
+							else if(!bracket) innerCallback();
+							else {
+								Array.prototype.push.apply(playerIds, bracket.playerIds);
+								innerCallback();
+							}
+						})
+					} else {
 						innerCallback();
-					},
-					// Add player Ids from source bracket
-					function(innerCallback) {
-						if(typeof options.sourceBracketId === "string") {
-							BracketSchema.findById(options.sourceBracketId)
-							.select("playerIds")
-							.exec(function(err, bracket) {
-								if(err) innerCallback(err);
-								else if(!bracket) innerCallback();
-								else {
-									Array.prototype.push.apply(playerIds, bracket.playerIds);
-									innerCallback();
-								}
-							})
-						} else {
-							innerCallback();
-						}
-					}],
-				function(err, results) {
-					callback(err, tournament, playerIds);
-				});
-			}
+					}	
+				}],
+			function(err, results) {
+				seriesCallback(err, tournament, playerIds);
+			});
 		},
 		// Filter out duplicates and players not registered for this tournament
-		function(tournament, playerIds, callback) {
+		function(tournament, playerIds, innerCallback) {
 			try {
 				var uniquePlayerIds = _.uniq(playerIds);
 				for(var i = uniquePlayerIds.length -1; i >= 0 ; i--) {
@@ -317,65 +342,49 @@ function seedBracket(bracketId, options, finalCallback) {
 	    				uniquePlayerIds.splice(i, 1);
 					}
 				}
-				callback(undefined, tournament, uniquePlayerIds);
+				innerCallback(undefined, tournament, uniquePlayerIds);
 			} catch(err) {
-				callback(err);
+				innerCallback(err);
 			}
 		},
 		// Create the necessary matches
-		function(tournament, playerIds, callback) {
+		function(tournament, playerIds, innerCallback) {
 			try {
 				console.log("Number of players registered for tournament: "+playerIds.length);
 				var tournamentSize = mathUtil.nextPowerOf2(playerIds.length);
 				console.log("Tournament size: "+tournamentSize);
 
-				var matchDict = {};
 				if(tournament.tournamentType === "singleElim") {
 					var numOfRounds = tournamentUtil.getNumOfRoundsInWinnerBracket(tournamentSize);
 					var numOfMatchesThisRound = 1;
 					for(var i = 0; i < numOfRounds; i++) {	
 						for(var j = 0; j < numOfMatchesThisRound, j++) {
-							var matchCoordinates = "1::"+(i+1)+"::"+(j+1);
-							matchDict[matchCoordinates] = {
+							var matchKey = "1::"+(i+1)+"::"+(j+1);
+							matchDict[matchKey] = {
+								_id: mongoose.Types.ObjectId(),
 								tournamentId: tournament._id,
 								bracketId: bracketId,
-								coordinates: matchCoordinates,
+								matchKey: matchKey,
 								createdTime: Date.now()
 							}
 						}
 						numOfMatchesThisRound *= 2;
 					}
 				} else if(tournament.tournamentType === "doubleElim") {
-					callback("doubleElim not yet implimented");
+					innerCallback("doubleElim not yet implimented");
 				} else if(tournament.tournamentType === "swiss") {
-					callback("swiss not yet implimented");
+					innerCallback("swiss not yet implimented");
 				} else {
-					callback("swiss not yet implimented");
+					innerCallback("swiss not yet implimented");
 				}
 			} catch(err) {
-				callback(err);
+				innerCallback(err);
 			}	
 
-			callback(undefined, matchDict, playerIds);
-		},
-		// Save the matches in the database 
-		function(matchDict, playerIds, callback) {
-			var saveMatchFuncs = {};
-			for(for key in matchDict) {
-				saveMatchFuncs[key] = function(key) {
-					return function(_callback) {
-						var newMatch = new MatchSchema(matchDict[key]);
-						newMatch.save(_callback);
-					}
-				});
-			}
-			async.series(saveMatchFuncs, function(err, newMatches) {
-				callback(err, newMatches, playerIds);
-			});	
+			innerCallback(undefined, tournament, playerIds);
 		},
 		// Get all players with raw and buchholtz scores
-		function(newMatches, playerIds, callback) {
-			var playerDict = {};
+		function(playerIds, innerCallback) {
 			async.each(playerIds, function(playerId, eachCallback) {
 				PlayerSchema.findById(playerId)
 				.select("buchholzScore rawScore")
@@ -388,11 +397,11 @@ function seedBracket(bracketId, options, finalCallback) {
 					}
 				});
 			}, function(err) {
-				callback(err, newMatches, playerDict);
+				innerCallback(err);
 			});
 		},
 		// Sort players by their scores
-		function(newMatches, playerDict, callback) {
+		function(innerCallback) {
 			try {
 				// Create a list of player ids from playerDict
 				var playerIds = _.map(playerDict, function(value, key) {
@@ -410,34 +419,104 @@ function seedBracket(bracketId, options, finalCallback) {
 					}
 				});
 
-				callback(undefined, newMatches, sortedPlayerIds)
-
+				innerCallback(undefined, sortedPlayerIds)
 			} catch(err) {
-				callback(err);
+				innerCallback(err);
 			}	
 		},
-		// Populate the starting matches
-		function(newMatches, sortedPlayerIds, callback) {
-			var matchIdPrefix = "1::1::"
-			var numOfStartingMatches = 
-			// Append the empty slots at the end of the sorted array. 
-			// This way the best players will get seeded with the worst players giving
-			// them the byes first.
-
-			var numOfEmptyPlayerSlots = mathUtil.nextPowerOf2(sortedPlayerIds) - sortedPlayerIds;
-			for(var i = 0; i < numOfEmptyPlayerSlots; i++) {
-				sortedPlayerIds.push(undefined);
+		// Iterate through new matches and populate losing and winner match Ids
+		function(sortedPlayerIds, innerCallback) {
+			if(bracket.bracketType === "singleElim") {
+				for(var key in matchDict) {
+					// If the round is one or less then you're already at the end of the bracket
+					var round = tournamentUtil.getBracketRoundFromMatchKey(key);
+					if(round <= 1) {
+						matchDict[key].winningMatchId = undefined;
+					} else {
+						var nextMatchId = tournamentUtil.getWinningMatchCoordsForSingleElim(key);
+						matchDict[key].winningMatchId = nextMatchId;
+					}
+				}
+			} else if(tournament.tournamentType === "doubleElim") {
+				innerCallback("doubleElim not yet implimented");
+			} else if(tournament.tournamentType === "swiss") {
+				innerCallback("swiss not yet implimented");
+			} else {
+				innerCallback("swiss not yet implimented");
 			}
 
-			for(var i = 0; i < sortedPlayerIds.length; i++) {
+			innerCallback();
+		},
+		// Populate the starting matches with players
+		function(sortedPlayerIds, innerCallback) {
+			try {
+				var numOfStartingPlayerSlots = mathUtil.nextPowerOf2(sortedPlayerIds);
+				var numOfMatchesFirstRound = tournamentUtil.getNumOfRoundsInWinnerBracket(numOfStartingPlayerSlots);
+				var matchIdPrefix = "1"+tournamentConstants.KEY_SEPARATOR+numOfMatchesFirstRound
+					 +tournamentConstants.KEY_SEPARATOR;
+				
+				// Append the empty slots at the end of the sorted array. 
+				// This way the best players will get seeded with the worst players 
+				// giving them the byes first.
+				var numOfEmptyPlayerSlots = numOfStartingPlayerSlots - sortedPlayerIds.length;
+				for(var i = 0; i < numOfEmptyPlayerSlots; i++) {
+					sortedPlayerIds.push(undefined);
+				}
 
+				// Add the player ids to the matches
+				for(var i = 0; i < numOfMatchesFirstRound.length; i++) {
+					var matchId = matchIdPrefix + (i+1);
+					matchDict[matchId].player1Id = sortedPlayerIds.shift();
+					matchDict[matchId].player2Id = sortedPlayerIds.pop();
+				}
+
+				innerCallback();
+			} catch(err) {
+				innerCallback(err);
 			}
+		},
+		// Iterate through matches and find ones with byes. Set the winner of 
+		// those matches and give players new matches
+		function(seriesCallback) {
+			try {
+				var playerUpdates = {};
+				for(var key in matchDict) {
+					var match = matchDict[key];
 
+					// Save the matchId to update the player
+					playerUpdates[match.player1Id] = match._id
 
-		}],
-	function(err, results) {
-
-	});
+					// If player2 is undefinded then set the matchWinner and assing new match
+					if(typeof match.player2Id === "undefined") {
+						match.winnerId = match.player1Id;
+						var oldMatchKey = match.matchKey
+						var nextMatchKey = tournamentUtil.getWinningMatchCoordsForSingleElim(oldMatchKey);
+						matchDict[newMatchKey].player1Id = match.player1Id;
+						playerUpdates[match.player1Id] = matchDict[newMatchKey]._id;
+					} else {
+						playerUpdates[match.player2Id] = math._id;
+					}
+				}
+				seriesCallback(playerUpdates);
+			} catch(err) {
+				seriesCallback(err);
+			}
+			
+		},	
+		// Update the players with their current matchIds
+		function(playerUpdates, innerCallback) {
+			async.forEachObj(playerUpdates, function(matchId, playerId, eachCallback) {
+				PlayerSchema.findByIdAndUpdate(playerId, {currentMatchId:matchId}, eachCallback);
+			}, innerCallback);
+		},
+		// Save the matches in the database
+		function(innerCallback) {
+			async.forEachOf(matchDict, function(match, key, eachCallback) {
+				var newMatch = new MatchSchema(matchDict[key]);
+				newMatch.save(eachCallback);
+			}, innerCallback);
+		}], 
+	finalCallback);
 }
 
 
@@ -585,24 +664,134 @@ function startTournament( tournamentId, finalCallback ) {
 
 	async.waterfall([
 		// Get the tournament with the id provided
-		function(callback) {
-			TournamentSchema.findById(tournamentId, function(err, tournament) {
-				if(err) callback(err);
-				else if(!tournament) callback("Unable to find tournament with id provided");
-				else callback(undefined, tournament);
+		function(seriesCallback) {
+			TournamentSchema.findById(tournamentId)
+			.select("startingBracketId")
+			.exec(function(err, tournament) {
+				if(err) seriesCallback(err);
+				else if(!tournament) seriesCallback("Unable to find tournament with id provided");
+				else seriesCallback(undefined, tournament);
 			});
 		},
-		// Add matches for the tournament
-		function(tournament, callback) {
-			addMatchesForTournament(tournament, callback);
+		// Seed the bracket for the tournament
+		function(tournament, seriesCallback) {
+			seedBracket(tournament.startingBracketId, options, seriesCallback);
 		},
-		// Populate the matches necessary for the tournament type
-		function(tournament, callback) {
-			tournament.tournamentType 
-		}],
-	function(err, results) {
+		// Flag the tournament as active
+		function(tournament, seriesCallback) {
+			TournamentSchema.findByIdAndUpdate(tournamnetId, {active:true}, seriesCallback);
+		}], finalCallback);
+}
 
-	});
+function setMatchWinner(matchId, winnerId, winType, finalCallback) {
+	if(typeof matchId !== "string") {
+		finalCallback("Can't set match winner with invalid match id");
+		return;
+	}
+	if(typeof winnerId !== "string") {
+		finalCallback("Can't set match winner with invalid match id");
+		return;
+	}
+	if(typeof winType !== "string" || tournamentConstants.WIN_TYPE.indexOf(winType) === -1) {
+		finalCallback("Can't set match winner with invalid win type");
+		return;
+	}
+
+	var match;
+	var bracket;
+
+	async.waterfall([
+		// Get the match by id
+		function(seriesCallback) {
+			MatchSchema.findById(matchId)
+			.select("player1Id player2Id bracketId winningMatchId losingMatchId")
+			.exec(function(err, _match) {
+				if(err) seriesCallback(err);
+				else if(!_match) seriesCallback("Unable to find match with Id");
+				else {
+					match = _match;
+					seriesCallback();
+				}
+			});
+		},
+		// Verify that the winner id is one of the players
+		function(seriesCallback) {
+			if(winnerId !== match.player1Id && winnerId !== match.player2Id) {
+				seriesCallback("WinnerId doesn't match either playerIds in match");
+			}
+			seriesCallback();
+		},
+		// Set match winner and save
+		function(seriesCallback) {
+			MatchSchema.findByIdAndUpdate(matchId, {winnerId:winnerId, winType:winType}, function(err, results) {
+				seriesCallback(err);
+			});
+		},
+		// Get the bracket to find out what kind of type it is so we can place
+		// the players in their next match accordingly
+		function(seriesCallback) {
+			BracketSchema.findById(match.bracketId)
+			.select("bracketType")
+			.exec(function(err, _bracket) {
+				if(err) seriesCallback(err);
+				else if(!_bracket) seriesCallback("Unable to find bracket with id");
+				else {
+					bracket = _bracket;
+					seriesCallback();
+				}
+			});
+		},
+		// Update the match id of both players to their next matches
+		function(seriesCallback) {
+			if(bracketType === "singleElim") {
+				
+				var winnerTypeMap = {
+					"victory" : "wins",
+					"draw": "draws",
+					"unplayed" : "unplayed",
+					"bye" : "unplayed"
+				}
+
+				var loserTypeMap = {
+					"victory" : "losses",
+					"draw": "draws",
+					"unplayed" : "unplayed",
+					"bye" : "unplayed"
+				}
+
+				async.series([
+					// Update loser position
+					function(innerCallback) {
+						var loserPlayerId = (winnerId === match.player1Id) : match.player2Id ? match.player1Id;
+						if(loserPlayerId) {
+							PlayerSchema.findByIdAndUpdate(loserPlayerId, {$push: {matchIdHistory:matchId}, 
+								$inc:{loserTypeMap[winType]:1}, $set:{currentMatchId: match.losingMatchId}}, seriesCallback);
+						} else {
+							seriesCallback();	
+						}	
+					},
+					// Update winner position
+					function(innerCallback) {
+						var winnerPlayerId = (winnerId === match.player1Id) : match.player1Id ? match.player2Id;
+							PlayerSchema.findByIdAndUpdate(winnerPlayerId, {$push: {matchIdHistory:matchId}, 
+								$inc:{winTypeMap[winType]:1}, $set:{currentMatchId: match.winningMatchId}}, seriesCallback);
+							});
+					},
+					// Did they win the bracket?
+					function(innerCallback) {
+						// Yes
+						if(!match.winningMatchId) {
+							MatchSchema.findById(bracket._id, {winnerId:winnerId, endTime:Date.now()}, innerCallback);
+						// Number No
+						} else {
+							innerCallback();
+						}
+					}], seriesCallback);
+			} else {
+				seriesCallback();
+			}
+		}], 
+	finalCallback);
 }
 
 function validateAdminId(userId, tournamentId, finalCallback) {
