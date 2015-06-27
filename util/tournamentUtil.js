@@ -1,4 +1,4 @@
-var tournamentConstants = require("./../constants/tournamentConstants");
+var constants = require("./../constants/constants");
 var mathUtil = require("./mathUtil");
 
 // TOURNAMENT HELPERS
@@ -76,7 +76,7 @@ function getWinningMatchCoordsForSingleElim( matchKey ) {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr = matchKey.split(tournamentConstants.KEY_SEPARATOR);
+	var coordArr = matchKey.split(constants.KEY_SEPARATOR);
 	var bracketNum = coordArr[0];
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
@@ -86,7 +86,7 @@ function getWinningMatchCoordsForSingleElim( matchKey ) {
 	}
 	matchNum = getWinningMatchNumFromWinnerBracket(matchNum);
 
-	return "1"+tournamentConstants.KEY_SEPARATOR+"roundNum"+tournamentConstants.KEY_SEPARATOR+"matchNum";
+	return "1"+constants.KEY_SEPARATOR+"roundNum"+constants.KEY_SEPARATOR+"matchNum";
 }
 
 function getWinningMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
@@ -94,14 +94,14 @@ function getWinningMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr; = mathCoords.split(tournamentConstants.KEY_SEPARATOR);
+	var coordArr = mathCoords.split(constants.KEY_SEPARATOR);
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
 
 	roundNum = getWinningRoundNumFromWinnerBracket(roundNum);
 	matchNum = getWinningMatchNumFromWinnerBracket(matchNum);
 
-	return "1"+tournamentConstants.KEY_SEPARATOR+"roundNum"+tournamentConstants.KEY_SEPARATOR+"matchNum";
+	return "1"+constants.KEY_SEPARATOR+"roundNum"+constants.KEY_SEPARATOR+"matchNum";
 }
 
 function getLosingMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
@@ -109,14 +109,14 @@ function getLosingMatchCoordsForDoubleElim( matchCoords, totalNumOfPlayers ) {
 		throw new Error("Match coordinates are invalid");
 	}
 
-	var coordArr; = mathCoords.split(tournamentConstants.KEY_SEPARATOR);
+	var coordArr = mathCoords.split(constants.KEY_SEPARATOR);
 	var roundNum = coordArr[1];
 	var matchNum = coordArr[2];
 
 	roundNum = getLosingRoundNumFromWinnerBracket(totalNumOfPlayers, roundNum);
 	matchNum = getLosingMatchNumFromWinnerBracket(totalNumOfPlayers, roundNum, matchNum);
 
-	return "2"+tournamentConstants.KEY_SEPARATOR+"roundNum"+tournamentConstants.KEY_SEPARATOR+"matchNum";
+	return "2"+constants.KEY_SEPARATOR+"roundNum"+constants.KEY_SEPARATOR+"matchNum";
 }
 /*
 function getFlippedLosingMatchNumFromWinnerBracket( totalNumOfPlayers, currentRoundNum, currentMatchNum ) {
@@ -193,7 +193,7 @@ function getNumOfMatchesForTournament(numOfPlayers, tournamentType) {
 	if(typeof numOfPlayers !== "number" || !mathUtil.isPowerOf2(numOfPlayers)) {
 		throw new Error("Can't get number of matches with invalid number of players");
 	}
-	if(tournamentConstants.TOURNAMENT_TYPES.indexOf(tournamentType) === -1) {
+	if(constants.TOURNAMENT_TYPES.indexOf(tournamentType) === -1) {
 		throw new Error("Can't get number of matches with invalid tournament type");
 	}
 
@@ -214,7 +214,7 @@ function getBracketSideFromMatchKey( key ) {
 		throw new Error("Unable to get bracket side with invalid key");
 	}
 
-	var keyArr = key.split(tournamentConstants.KEY_SEPARATOR);
+	var keyArr = key.split(constants.KEY_SEPARATOR);
 	return keyArr[0];
 }
 
@@ -223,7 +223,7 @@ function getBracketRoundFromMatchKey( key ) {
 		throw new Error("Unable to get bracket round with invalid key");
 	}
 
-	var keyArr = key.split(tournamentConstants.KEY_SEPARATOR);
+	var keyArr = key.split(constants.KEY_SEPARATOR);
 	return keyArr[1];
 }
 
@@ -232,7 +232,7 @@ function getBracketMatchFromMatchKey( key ) {
 		throw new Error("Unable to get bracket match with invalid key");
 	}
 
-	var keyArr = key.split(tournamentConstants.KEY_SEPARATOR);
+	var keyArr = key.split(constants.KEY_SEPARATOR);
 	return keyArr[2];
 }
 
@@ -246,7 +246,7 @@ module.exports = {
 	getLosingMatchNumFromWinnerBracket : getLosingMatchNumFromWinnerBracket,
 
 	getNumOfMatchesForSingleElim : getNumOfMatchesForSingleElim,
-	getNumOfMatchesForDoubleElim : getNumOfMatchesForDoubleElim
+	getNumOfMatchesForDoubleElim : getNumOfMatchesForDoubleElim,
 
 	getWinningMatchCoordsForSingleElim : getWinningMatchCoordsForSingleElim,
 	

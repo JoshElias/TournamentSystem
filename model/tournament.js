@@ -3,28 +3,34 @@ var mongoose = require('mongoose'),
  
 // Deck schema
 var tournamentSchema = new Schema({
-	name: {type:String, default: "Unnamed tournament"},
+	creatorId: {type: Schema.Types.ObjectId, required:true},
+    name: {type:String, default: "Unnamed tournament"},
 	description: {type:String, default: ""},
-    creatorId: {type: Schema.Types.ObjectId},
-    tournamentType: {type:String, default:"singleElim"},
-    playerIds: [{type: Schema.Types.ObjectId, ref:"User"}],
+    startTime: {type:Date, required:true},
+    endTime: {type:Date},
+    regionName: {type:String, default:"na"},
+
+    adminIds: [{type:Schema.Types.ObjectId, ref: "User"}],
+
+    gameOptionsId: {type:Schema.Types.ObjectId},
+    gameType: {type:String, default:"singleElim"},
+    teamSize: {type:Number, default: 1},
+    bestOf: {type: Number, default: 1},
+
+    teamIds: [{type: Schema.Types.ObjectId, ref:"TournamentTeam"}],
     playerIdWhitelist: [{type:Schema.Types.ObjectId, ref:"User"}],
     playerIdBlacklist: [{type:Schema.Types.ObjectId, ref:"User"}],
-    startingBracketId: {type:Schema.Types.ObjectId, ref:"Bracket"},
-    bracketIds: [{type:Schema.Types.ObjectId, ref: "Bracket"}],
-    startingBracketId: {type:Schema.Types.ObjectId, ref:"Bracket"},
-    endingBracketId: {type:Schema.Types.ObjectId, ref:"Bracket"},
- 	regionName: {type:String, default:"na"},
+
+    bracketIds: [{type:Schema.Types.ObjectId, ref: "TournamentBracket"}],
+    startingBracketId: {type:Schema.Types.ObjectId, ref:"TournamentBracket"},
+    endingBracketId: {type:Schema.Types.ObjectId, ref:"TournamentBracket"},
+ 	
     prizePool: [{type:Number}],
     creationTime: {type:Date},
-    endTime: {type:Date},
-    numOfDecks: {type:Number, min: 1, max: 2},
-    numOfDeckBans: {type:Number, min: 0, max: 8},
-    decksPerClass: {type:Number, min: 1, max: 9, default: 1},
-    cardBans: [{type:Schema.Types.ObjectId, ref:"Card"}],
+        
     active: {type: Boolean, default: false},
-    feature: {type: Boolean, default: false},
-    adminIds: [{type:Schema.Types.ObjectId, ref: "User"}]
+    featured: {type: Boolean, default: false},
+  
 });
 
 var Tournament = mongoose.model('Tournament', tournamentSchema);

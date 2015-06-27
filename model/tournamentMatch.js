@@ -2,7 +2,7 @@ var mongoose = require('mongoose'),
     Schema = mongoose.Schema;
  
 // Deck schema
-var matchSchema = new Schema({
+var tournamentMatchSchema = new Schema({
 	tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},
 	bracketId: {type: Schema.Types.ObjectId, ref:"Bracket"},
 	matchKey: [{type: Number}],
@@ -22,6 +22,6 @@ var matchSchema = new Schema({
     endTime: {type:Date}
 });
 
-var Match = mongoose.model('Match', matchSchema);
+var TournamentMatch = mongoose.model('TournamentMatch', tournamentMatchSchema);
 
-module.exports = Match;
+module.exports = TournamentMatch;
