@@ -1,9 +1,12 @@
 var async = require("async");
 var tournamentUtil = require("./tournamentUtil");
-var GameOptions = require("./gameOptions");
+var RoundOptions = require("./roundOptions");
+var TournamentSchema = require("./../model/tournament");
+var BracketSchema = require("./../model/tournamentBracket");
 
 
-function addBracket( adminId, tournamentId, bracketOptions, gameOptions, finalCallback ) {
+function createBracket( adminId, tournamentId, bracketOptions, roundOptions, finalCallback ) {
+
 	// Validate arguments
 	if(typeof adminId !== "string") {
 		finalCallback("Can't add bracket with invalid admin id");
@@ -24,14 +27,15 @@ function addBracket( adminId, tournamentId, bracketOptions, gameOptions, finalCa
 		// Lookup the tournament by id
 		function(seriesCallback) {
 			TournamentSchema.findById(tournamentId)
-			.select("gameOptionsId bestOf gameType startingBracketId endingBracketId")
-			.exec(err, _tournament) {
+			.select("defaultRoundOptionsId bestOf gameType startingBracketId endingBracketId")
+			.exec(function(err, _tournament) {
 				if(err) seriesCallback(err);
 				else if(!_tournament) seriesCallback("Unable to find tournament by id");
 				else  {
 					tournament = _tournament;
 					seriesCallback(undefined);
-			}
+				}
+			});
 		},
 		// Check if this user has admin rights to this tournament
 		function(seriesCallback) {
@@ -43,20 +47,20 @@ function addBracket( adminId, tournamentId, bracketOptions, gameOptions, finalCa
 		},
 		// Get game options from tournament and combine with those provided
 		function(seriesCallback) {
-			gameOptions.getGameOptions(tournament.gameOptionsId, tournament.gameType, function(err, gameOptions) {
+			RoundOptions.getRoundOptions(tournament.defaultRoundOptionsId.toString(), tournament.gameType, function(err, defaultGameOptions) {
 				if(err) seriesCallback(err);
 				else {
-					var newGameOptions = GameOptions.combineGameOptions(tournament.gameOptions, gameOptions);
-					seriesCallback(undefined, newGameOptions);
+					var newRoundOptions = RoundOptions.combineRoundOptions(defaultGameOptions, roundOptions);
+					seriesCallback(undefined, newRoundOptions);
 				}
 			});
 		},
 		// Save the game options
-		function(newGameOptions, seriesCallback) {
-			GameOptions.addGameOptions(newGameOptions, seriesCallback);
-		}
+		function(newRoundOptions, seriesCallback) {
+			RoundOptions.createRoundOptions(newRoundOptions, seriesCallback);
+		},
 		// Get arguments for creating a bracket
-		function(newGameOptions, seriesCallback) {
+		function(newRoundOptions, seriesCallback) {
 			try {
 				var bracketArgs = {
 					creatorId : adminId,
@@ -65,12 +69,10 @@ function addBracket( adminId, tournamentId, bracketOptions, gameOptions, finalCa
 					description: (typeof bracketOptions.description !== "string") ? "" : bracketOptions.description,
 					tournamentId: tournamentId,
 					prizePool: (!Array.isArray(bracketOptions.prizePool)) ? [] : bracketOptions.prizePool,
-					bestOf: (typeof bracketOptions.bestOf !== "number") ? tournament.bestOf : bracketOptions.bestOf,
-					gameOptionsId: newGameOptions._id,
+					defaultRoundOptionsId: newRoundOptions._id,
 					gameType: tournament.gameType,
 					creationTime: Date.now()
 				}
-
 				seriesCallback(undefined, bracketArgs);
 			} catch(err) {
 				seriesCallback(err);
@@ -79,11 +81,12 @@ function addBracket( adminId, tournamentId, bracketOptions, gameOptions, finalCa
 		// Create bracket
 		function(bracketArgs, seriesCallback) {
 			var newBracket = new BracketSchema(bracketArgs);
-			newBracket.save(seriesCallback);
+			newBracket.save(function(err, newBracket) {
+				seriesCallback(err, newBracket);
+			});
 		},
 		// Add bracket to tournament. Check for starting and ending bracket ids
 		function(newBracket, seriesCallback) {	
-
 			var tournamentUpdates = {$push:{bracketIds:newBracket._id}};
 			if(typeof tournament.startingBracketId === "undefined" || tournament.startingBracketId === "") {
 				tournamentUpdates.startingBracketId = newBracket._id
@@ -92,7 +95,9 @@ function addBracket( adminId, tournamentId, bracketOptions, gameOptions, finalCa
 				tournamentUpdates.endingBracketId = newBracket._id;
 			}
 
-			TournamentSchema.findByIdAndUpdate(tournamentId, tournamentUpdates, seriesCallback);
+			TournamentSchema.findByIdAndUpdate(tournamentId, tournamentUpdates, function(err) {
+				seriesCallback(err, newBracket);
+			});
 		}], 
 	finalCallback);
 }
@@ -105,14 +110,11 @@ function removeBracket(adminId, bracketId, finalCallback ) {
 		return;
 	}
 
-
-	var tournament;
-
 	async.waterfall([
 		// Look up the bracket in the db
 		function(seriesCallback) {
 			BracketSchema.findById(bracketId)
-			.select("gameType nextBracketId gameOptionsId tournamentId matchIds")
+			.select("gameType nextBracketId defaultRoundOptionsId tournamentId matchIds")
 			.exec(function(err, bracket) {
 				if(err) seriesCallback(err);
 				else if(!bracket) seriesCallback(true);
@@ -123,86 +125,54 @@ function removeBracket(adminId, bracketId, finalCallback ) {
 		function(bracket, seriesCallback) {
 			tournamentUtil.validateAdminId(adminId, bracket.tournamentId, function(err, isAdmin) {
 				if(err) seriesCallback(err);
-				else if(!isAdmin) seriesCallback("This user does not have admin rights to this tournament") {
+				else if(!isAdmin) seriesCallback("This user does not have admin rights to this tournament");
 				else seriesCallback(undefined, bracket);
 			});
 		},
 		// Delete the game options associated with this bracket
 		function(bracket, seriesCallback) {
-			GameOptions.removeGameOption(bracket.gameOptionsId, bracket.gameType, function(err) {
+			RoundOptions.removeRoundOptions(bracket.defaultRoundOptionsId.toString(), bracket.gameType, function(err) {
 				seriesCallback(err, bracket);
-			});
+			}); 
 		},
 		// Delete the matches belonging to this bracket
 		function(bracket, seriesCallback) {
 			async.eachSeries(bracket.matchIds, function(matchId, eachCallback) {
-				MatchSchema.find()
+				MatchSchema.find({_id:matchId}).remove(eachCallback);
+			}, function(err) {
+				seriesCallback(err, bracket);
 			});
 		},
 		// Lookup the tournament by id
-		function(seriesCallback) {
-			TournamentSchema.findById(tournamentId)
+		function(bracket, seriesCallback) {
+			TournamentSchema.findById(bracket.tournamentId)
 			.select("gameOptionsId bestOf gameType startingBracketId endingBracketId")
-			.exec(err, _tournament) {
+			.exec(function(err, tournament) {
 				if(err) seriesCallback(err);
-				else if(!_tournament) seriesCallback("Unable to find tournament by id");
-				else  {
-					tournament = _tournament;
-					seriesCallback(undefined);
-			}
+				else if(!tournament) seriesCallback(true);
+				else seriesCallback(undefined, tournament);
+			});
+	
 		},
+		// Remove bracket from tournament. Check for starting and ending bracket ids
+		function(tournament, seriesCallback) {	
+			var tournamentUpdates = {$pull:{bracketIds:bracketId}};
+			if(typeof tournament.startingBracketId !== "undefined" && tournament.startingBracketId === bracketId) {
+				tournamentUpdates.startingBracketId = ""
+			}
+			if(typeof tournament.endingBracketId !== "undefined" && tournament.endingBracketId === bracketId) {
+				tournamentUpdates.endingBracketId = "";
+			}
 
-		// Get game options from tournament and combine with those provided
-		function(seriesCallback) {
-			gameOptions.getGameOptions(tournament.gameOptionsId, tournament.gameType, function(err, gameOptions) {
-				if(err) seriesCallback(err);
-				else {
-					var newGameOptions = GameOptions.combineGameOptions(tournament.gameOptions, gameOptions);
-					seriesCallback(undefined, newGameOptions);
-				}
+			TournamentSchema.findByIdAndUpdate(tournament._id, tournamentUpdates, function(err) {
+				seriesCallback(err);
 			});
 		},
-		// Save the game options
-		function(newGameOptions, seriesCallback) {
-			GameOptions.addGameOptions(newGameOptions, seriesCallback);
-		}
-		// Get arguments for creating a bracket
-		function(newGameOptions, seriesCallback) {
-			try {
-				var bracketArgs = {
-					creatorId : adminId,
-					bracketType: (typeof bracketOptions.bracketType !== "string") ? "singleElim" : bracketOptions.bracketType,
-					name: (typeof bracketOptions.name !== "string") ? "Unnamed Bracket" : bracketOptions.name,
-					description: (typeof bracketOptions.description !== "string") ? "" : bracketOptions.description,
-					tournamentId: tournamentId,
-					prizePool: (!Array.isArray(bracketOptions.prizePool)) ? [] : bracketOptions.prizePool,
-					bestOf: (typeof bracketOptions.bestOf !== "number") ? tournament.bestOf : bracketOptions.bestOf,
-					gameOptionsId: newGameOptions._id,
-					creationTime: Date.now()
-				}
-
-				seriesCallback(undefined, bracketArgs);
-			} catch(err) {
+		// Delete the bracket from the database
+		function(seriesCallback) {
+			BracketSchema.find({_id:bracketId}).remove(function(err) {
 				seriesCallback(err);
-			}
-		},	
-		// Create bracket
-		function(bracketArgs, seriesCallback) {
-			var newBracket = new BracketSchema(bracketArgs);
-			newBracket.save(seriesCallback);
-		},
-		// Add bracket to tournament. Check for starting and ending bracket ids
-		function(newBracket, seriesCallback) {	
-
-			var tournamentUpdates = {$push:{bracketIds:newBracket._id}};
-			if(typeof tournament.startingBracketId === "undefined" || tournament.startingBracketId === "") {
-				tournamentUpdates.startingBracketId = newBracket._id
-			}
-			if(typeof tournament.endingBracketId === "undefined" || tournament.endingBracketId === "") {
-				tournamentUpdates.endingBracketId = newBracket._id;
-			}
-
-			TournamentSchema.findByIdAndUpdate(tournamentId, tournamentUpdates, seriesCallback);
+			});
 		}], 
 	finalCallback);
 }
@@ -299,13 +269,12 @@ function seedBracket(bracketId, options, finalCallback) {
 			try {
 				console.log("Number of players registered for tournament: "+playerIds.length);
 				var tournamentSize = mathUtil.nextPowerOf2(playerIds.length);
-				console.log("Tournament size: "+tournamentSize);
 
 				if(tournament.tournamentType === "singleElim") {
 					var numOfRounds = tournamentUtil.getNumOfRoundsInWinnerBracket(tournamentSize);
 					var numOfMatchesThisRound = 1;
 					for(var i = 0; i < numOfRounds; i++) {	
-						for(var j = 0; j < numOfMatchesThisRound, j++) {
+						for(var j = 0; j < numOfMatchesThisRound; j++) {
 							var matchKey = "1::"+(i+1)+"::"+(j+1);
 							matchDict[matchKey] = {
 								_id: mongoose.Types.ObjectId(),
@@ -465,3 +434,11 @@ function seedBracket(bracketId, options, finalCallback) {
 		}], 
 	finalCallback);
 }
+
+
+ // MAIN EXPORTS
+ module.exports = {
+ 	createBracket : createBracket,
+ 	removeBracket : removeBracket,
+ 	seedBracket : seedBracket
+ }

@@ -2,7 +2,7 @@ var mongoose = require('mongoose'),
     Schema = mongoose.Schema;
  
 // Deck schema
-var hearthstoneGameOptions = new Schema({
+var hearthstoneRoundOptions = new Schema({
 	gameType: {type:String, default:"hearthstone"},
     numOfDecks: {type:Number, min: 1, max: 2},
     numOfDeckBans: {type:Number, min: 0, max: 8},
@@ -11,6 +11,6 @@ var hearthstoneGameOptions = new Schema({
     bestOf: {type:Number, default: 1}
 });
 
-var HearthstoneGameOptions = mongoose.model('HearthstoneGameOptions', hearthstoneGameOptions);
+var HearthstoneRoundOptions = mongoose.model('HearthstoneRoundOptions', hearthstoneRoundOptions);
 
-module.exports = HearthstoneGameOptions;
+module.exports = HearthstoneRoundOptions;

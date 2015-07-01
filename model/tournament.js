@@ -12,7 +12,7 @@ var tournamentSchema = new Schema({
 
     adminIds: [{type:Schema.Types.ObjectId, ref: "User"}],
 
-    gameOptionsId: {type:Schema.Types.ObjectId},
+    defaultRoundOptionsId: {type:Schema.Types.ObjectId},
     gameType: {type:String, default:"singleElim"},
     teamSize: {type:Number, default: 1},
     bestOf: {type: Number, default: 1},
@@ -29,8 +29,7 @@ var tournamentSchema = new Schema({
     creationTime: {type:Date},
         
     active: {type: Boolean, default: false},
-    featured: {type: Boolean, default: false},
-  
+    featured: {type: Boolean, default: false}
 });
 
 var Tournament = mongoose.model('Tournament', tournamentSchema);

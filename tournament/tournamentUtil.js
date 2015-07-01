@@ -1,7 +1,7 @@
 var TournamentSchema = require("./../model/tournament");
 
 
-function validateAdminId(tournamentId, userId, finalCallback) {
+function validateAdminId(userId, tournamentId, finalCallback) {
 	TournamentSchema.findById(tournamentId)
 	.select("adminIds")
 	.exec(function(err, tournament) {
@@ -9,7 +9,7 @@ function validateAdminId(tournamentId, userId, finalCallback) {
 		else if(!tournament || tournament.adminIds.indexOf(userId) === -1) {
 			finalCallback(undefined, false);
 		} else {
-			finalCallback();
+			finalCallback(undefined, true);
 		}
 	});
 }

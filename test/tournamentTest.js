@@ -1,11 +1,16 @@
  var assert = require("assert");
 var mongoose = require("mongoose");
 var tournament = require("./../tournament/tournament");
+var bracket = require("./../tournament/bracket");
+
 
 describe("Tournament Tests", function() {
 
+	var TEST_ADMIN_ID = "558c4b58d9c7ff69bd0da9af";
+	var testTournamentId;
+	var testBracketId;
+
 	describe("createTournament", function() {
-		var testTournamentId;
 		it("Should create a tournament", function(done) {
 			var testTournamentOptions = {
 				name: "Test Tournament",
@@ -26,17 +31,13 @@ describe("Tournament Tests", function() {
 				cardBanIds: []
 			}
 
-			tournament.createTournament("558c4b58d9c7ff69bd0da9af", testTournamentOptions, testGameOptions, function(err, newTournament) {
+			tournament.createTournament(TEST_ADMIN_ID, testTournamentOptions, testGameOptions, function(err, newTournament) {
 				if(err) done(err);
 				else {
-					testTournamentId = newTournament._id;
+					testTournamentId = newTournament._id.toString();
 					done();
 				}
 			});
-		})
-		after(function(done) {
-			var TournamentSchema = require("./../model/tournament");
-			TournamentSchema.findById(testTournamentId).remove(done);
 		});
 	});
 
@@ -89,5 +90,41 @@ describe("Tournament Tests", function() {
 				}
 			});
 		});
+	});
+
+	describe("createBracket", function() {
+		it("Should create a bracket", function(done) {
+			var testBracketOptions = {
+				name: "Bracket Tournament",
+				description: " test description",
+				gameType: "hearthstone",
+				startTime : Date.now(),
+				prizePool: [],
+				bestOf: 3
+			}
+
+			bracket.createBracket(TEST_ADMIN_ID, testTournamentId, testBracketOptions, {}, function(err, newBracket) {
+				if(err) done(err);
+				else {
+					testBracketId = newBracket._id;
+					done();
+				}
+			});
+		})
+	});
+
+	describe("removeBracket", function() {
+		it("Should remove a bracket", function(done) {
+			bracket.removeBracket(TEST_ADMIN_ID, testBracketId.toString(), function(err) {
+				if(err) {
+					console.log("ERR REMOVING BRACKET");
+					console.log(err);
+					done(err);
+				} else {
+					done();
+				}
+			});
+		});
 	})
+
 });

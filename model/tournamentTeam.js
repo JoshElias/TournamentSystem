@@ -9,6 +9,7 @@ var tournamentTeamSchema = new Schema({
   matchIdHistory: [{type: Schema.Types.ObjectId, ref:"TournamentMatch"}],
 	bracketId: {type: Schema.Types.ObjectId, ref:"TournamentBracket"},
   tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},
+  seedNumber: {type: Number},
   rawScore: {type: Number, default: 0},
   buchholzScore: {type: Number, default: 0},
   wins: {type:Number, default: 0},

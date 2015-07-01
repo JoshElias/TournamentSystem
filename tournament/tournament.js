@@ -10,7 +10,7 @@ var MatchSchema = require("./../model/tournamentMatch");
 var tournamentUtil = require("./tournamentUtil");
 var util = require("util");
 var constants = require("./../constants/constants");
-var gameOption = require("./gameOptions");
+var roundOptions = require("./roundOptions");
 
 
 // Connect to the database
@@ -32,13 +32,13 @@ mongoose.connect('mongodb://localhost/tempostorm');
 //		bestOf: (Number),
 //		prizePool: (Array),
 //  }
-// 	gameOptions: {
+// 	defaultRoundOptions: {
 //		gameType: (String),
 //		gameSpecificStuff
 //  }
 // 	finalCallback : (Callback) // (err, newTournament)
 //
-function createTournament( adminId, tournamentOptions, gameOptions, finalCallback ) {	
+function createTournament( adminId, tournamentOptions, defaultRoundOptions, finalCallback ) {	
 	// Validate arguments
 	if(typeof adminId !== "string") {
 		finalCallback("Can't create tournament with invalid user id");
@@ -56,7 +56,7 @@ function createTournament( adminId, tournamentOptions, gameOptions, finalCallbac
 		finalCallback("Can't create tournament with invalid game type");
 		return;
 	}
-	if(typeof gameOptions !== "object") {
+	if(typeof defaultRoundOptions !== "object") {
 		finalCallback("Can't create tournament with no game options");
 		return;
 	}		
@@ -89,13 +89,52 @@ function createTournament( adminId, tournamentOptions, gameOptions, finalCallbac
 				else seriesCallback();
 			});
 		},
-		// Save the game options
+		// Save the round options
 		function(seriesCallback) {
-			gameOption.addGameOptions(gameOptions, seriesCallback);
+			roundOptions.createRoundOptions(defaultRoundOptions, seriesCallback);
 		},
 		// Save the tournament
-		function(newGameOptions, seriesCallback) {
-			tournamentArgs["gameOptionsId"] = newGameOptions._id;
+		function(newRoundOptions, seriesCallback) {
+			tournamentArgs["defaultRoundOptionsId"] = newRoundOptions._id;
+			var newTournament = new TournamentSchema(tournamentArgs);
+			newTournament.save(finalCallback);
+		}],
+	finalCallback);
+}
+
+function removeTournament( adminId, tournamentId, finalCallback ) {	
+	// Validate arguments
+	if(typeof adminId !== "string") {
+		finalCallback("Can't remove tournament with invalid admin id");
+		return;
+	}
+	if(typeof tournamentId !== "string") {
+		finalCallback("Can't remove tournament with invalid tournament id");
+		return;
+	}
+
+	async.waterfall([
+		// Check if the tournament exists
+		function(seriesCallback) {
+			TournamentSchema.findById(tournamentId)
+			.select()
+		},
+		// Validate adminId
+		function(seriesCallback) {
+			tournamentUtil.validateAdminId(adminId, tournamentId, function(err, isAdmin) {
+				if(err) seriesCallback(err);
+				else if(!isAdmin) seriesCallback("Unable to remove tournament with invalid adminId");
+				else seriesCallback();
+			});
+		},
+
+		// Save the round options
+		function(seriesCallback) {
+			roundOptions.createRoundOptions(defaultRoundOptions, seriesCallback);
+		},
+		// Save the tournament
+		function(newRoundOptions, seriesCallback) {
+			tournamentArgs["defaultRoundOptionsId"] = newRoundOptions._id;
 			var newTournament = new TournamentSchema(tournamentArgs);
 			newTournament.save(finalCallback);
 		}],
@@ -125,7 +164,7 @@ function startTournament( tournamentId, finalCallback ) {
 		},
 		// Flag the tournament as active
 		function(tournament, seriesCallback) {
-			TournamentSchema.findByIdAndUpdate(tournamnetId, {active:true}, seriesCallback);
+			TournamentSchema.findByIdAndUpdate(tournamentId, {active:true}, seriesCallback);
 		}], finalCallback);
 }
 
