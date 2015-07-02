@@ -1,10 +1,14 @@
+var PlayerSchema = require("./../model/tournamentPlayer");
+var TeamSchema = require("./../model/tournamentTeam");
+
+
 // Creates a player for a tournament in the database with the arguments provided.
 //	
 // 	userId : (String),
-// 	tournamentId: (String),
+// 	teamId: (String),
 // 	finalCallback : (Callback) // (err, newPlayer)
 //
-function addPlayer( userId, tournamentId, finalCallback ) {
+function createPlayer( userId, teamId, finalCallback ) {
 	// Validate arguments
 	if(typeof userId !== "string") {
 		finalCallback("Can't add player with no user id");
@@ -16,14 +20,24 @@ function addPlayer( userId, tournamentId, finalCallback ) {
 	}
 
 	async.waterfall([
+		// Get the associated Team
+		function(seriesCallback) {
+			TeamSchema.findById(teamId)
+			.select("tournamentId")
+			.exec(function(err, team) {
+				if(err) seriesCallback(err);
+				else if(!team) seriesCallback("Unable to add player with invalid teamId");
+				else seriesCallback(undefined, tournamentId);
+			});
+		},
 		// Check that this user hasn't already created a player for this tournament
-		function(callback) {
-			PlayerSchema.count({user:userId, tournament:tournamentId}, function(err, count) {
-				if(err) callback(err);
+		function(tournamentId, seriesCallback) {
+			PlayerSchema.count({user:userId, $or:[{tournamentId:tournamentId}, {teamId:teamId}]}, function(err, count) {
+				if(err) seriesCallback(err);
 				else if(count > 0) {
-					callback("This user has already created a player for this tournament");
+					seriesCallback("This user has already created a player for this tournament");
 				} else {
-					callback();
+					seriesCallback();
 				}
 			});
 		},
@@ -40,22 +54,6 @@ function addPlayer( userId, tournamentId, finalCallback ) {
 					callback(undefined, user);
 				}
 			});
-		},
-		// Check that user has linked their battle.net account
-		function(user, callback) {
-			if(typeof(user.bnetID) !== "string" || user.bnetID.length < 1) {
-				callback("User needs to link their battle.net account");
-			} else {
-				callback(undefined, user);
-			}
-		},
-		// Check that user has linked their paypal account
-		function(user, callback) {
-			if(typeof user.paypalID !== "string" || user.paypalID.length < 1) {
-				callback("User needs to link their paypal account");
-			} else {
-				callback(undefined, user);
-			}
 		},
 		// Get the associated tournament
 		function(user, callback) {
@@ -78,6 +76,22 @@ function addPlayer( userId, tournamentId, finalCallback ) {
 				|| tournament.playerBlacklist.indexOf(userId) !== -1) {
 				callback("Cannot add player. User is blacklisted");
 			} else {
+				callback(undefined, tournament, user);
+			}
+		},
+		// Check that user has linked their battle.net account
+		function(tournament, user, callback) {
+			if(typeof(user.bnetID) !== "string" || user.bnetID.length < 1) {
+				callback("User needs to link their battle.net account");
+			} else {
+				callback(undefined, tournament, user);
+			}
+		},
+		// Check that user has linked their paypal account
+		function(tournament, user, callback) {
+			if(typeof user.paypalID !== "string" || user.paypalID.length < 1) {
+				callback("User needs to link their paypal account");
+			} else {
 				callback(undefined, tournament);
 			}
 		},
@@ -94,11 +108,16 @@ function addPlayer( userId, tournamentId, finalCallback ) {
 				callback(err, tournament, newPlayer);
 			});
 		}, 
-		// Add Player to tournament
+		// Add Player to team
 		function(tournament, newPlayer, callback) {
-			TournamentSchema.findByIdAndUpdate(tournament._id, {$push:{players:newPlayer._id}}, function(err, tournament) {
+			TeamSchema.findByIdAndUpdate(teamId, {$push:{playerIds:newPlayer._id}}, function(err, tournament) {
 				callback(err, newPlayer);
 			});
 		}
 	], finalCallback);
+}
+
+// MAIN EXPORTS
+module.exports = {
+	createPlayer : createPlayer
 }

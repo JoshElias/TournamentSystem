@@ -12,14 +12,15 @@ var tournamentSchema = new Schema({
 
     adminIds: [{type:Schema.Types.ObjectId, ref: "User"}],
 
+    gameType: {type: String},
     defaultRoundOptionsId: {type:Schema.Types.ObjectId},
-    gameType: {type:String, default:"singleElim"},
     teamSize: {type:Number, default: 1},
     bestOf: {type: Number, default: 1},
 
+    managerIds: [{type: Schema.Types.ObjectId, ref: "TeamManager"}],
     teamIds: [{type: Schema.Types.ObjectId, ref:"TournamentTeam"}],
-    playerIdWhitelist: [{type:Schema.Types.ObjectId, ref:"User"}],
-    playerIdBlacklist: [{type:Schema.Types.ObjectId, ref:"User"}],
+    userIdWhitelist: [{type:Schema.Types.ObjectId, ref:"User"}],
+    userIdBlacklist: [{type:Schema.Types.ObjectId, ref:"User"}],
 
     bracketIds: [{type:Schema.Types.ObjectId, ref: "TournamentBracket"}],
     startingBracketId: {type:Schema.Types.ObjectId, ref:"TournamentBracket"},

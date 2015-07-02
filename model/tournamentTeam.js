@@ -4,8 +4,10 @@ var mongoose = require('mongoose'),
 // Deck schema
 var tournamentTeamSchema = new Schema({
 	managerId: {type: Schema.Types.ObjectId, ref:"User"},
+  name: {type: String},
+  desciption: {type: String},
   playerIds: [{type: Schema.Types.ObjectId, ref:"TournamentPlayer"}],
-  currentMatch: {type: Schema.Types.ObjectId, ref:"TournamentMatch"},
+  currentMatchId: {type: Schema.Types.ObjectId, ref:"TournamentMatch"},
   matchIdHistory: [{type: Schema.Types.ObjectId, ref:"TournamentMatch"}],
 	bracketId: {type: Schema.Types.ObjectId, ref:"TournamentBracket"},
   tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"},
