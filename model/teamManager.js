@@ -4,7 +4,7 @@ var mongoose = require('mongoose'),
 // Deck schema
 var managerSchema = new Schema({
 	userId: {type: Schema.Types.ObjectId, ref:"User"},
-  	teamId: {type: Schema.Types.ObjectId, "TournamentTeam"},
+  	teamId: {type: Schema.Types.ObjectId, ref: "TournamentTeam"},
   	tournamentId: {type: Schema.Types.ObjectId, ref:"Tournament"}
 });
 

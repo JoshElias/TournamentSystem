@@ -1,6 +1,6 @@
 var async = require("async");
 var mongoose = require("mongoose");
-var mathUtil = require("./../util/matchUtil");
+var mathUtil = require("./../util/mathUtil");
 var BracketSchema = require("./../model/tournamentBracket");
 var PlayerSchema = require("./../model/tournamentPlayer");
 
@@ -276,20 +276,24 @@ function setMatchWinner(matchId, winnerId, winType, finalCallback) {
 				async.series([
 					// Update loser position
 					function(innerCallback) {
-						var loserPlayerId = (winnerId === match.player1Id) : match.player2Id ? match.player1Id;
+						/*
+						var loserPlayerId = (winnerId === match.player1Id) ? match.player2Id : match.player1Id;
 						if(loserPlayerId) {
+							var loseType = loserTypeMap[winType];
 							PlayerSchema.findByIdAndUpdate(loserPlayerId, {$push: {matchIdHistory:matchId}, 
-								$inc:{loserTypeMap[winType]:1}, $set:{currentMatchId: match.losingMatchId}}, seriesCallback);
+								$inc:{loseType:1}, $set:{currentMatchId: match.losingMatchId}}, seriesCallback);
 						} else {
 							seriesCallback();	
-						}	
+						}	*/
 					},
 					// Update winner position
 					function(innerCallback) {
-						var winnerPlayerId = (winnerId === match.player1Id) : match.player1Id ? match.player2Id;
+						/*
+						var winnerPlayerId = (winnerId === match.player1Id) ? match.player1Id : match.player2Id;
 							PlayerSchema.findByIdAndUpdate(winnerPlayerId, {$push: {matchIdHistory:matchId}, 
 								$inc:{winTypeMap[winType]:1}, $set:{currentMatchId: match.winningMatchId}}, seriesCallback);
 							});
+*/
 					},
 					// Did they win the bracket?
 					function(innerCallback) {

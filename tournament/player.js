@@ -1,3 +1,6 @@
+var async = require("async");
+var UserSchema = require("./../model/user");
+var TournamentSchema = require("./../model/tournament");
 var PlayerSchema = require("./../model/tournamentPlayer");
 var TeamSchema = require("./../model/tournamentTeam");
 
@@ -14,8 +17,8 @@ function createPlayer( userId, teamId, finalCallback ) {
 		finalCallback("Can't add player with no user id");
 		return;
 	}
-	if(typeof tournamentId !== "string") {
-		res.json({err: "Can't add player with no tournament id"})
+	if(typeof teamId !== "string") {
+		finalCallback("Can't add player with no team id")
 		return;
 	}
 
@@ -27,7 +30,11 @@ function createPlayer( userId, teamId, finalCallback ) {
 			.exec(function(err, team) {
 				if(err) seriesCallback(err);
 				else if(!team) seriesCallback("Unable to add player with invalid teamId");
-				else seriesCallback(undefined, tournamentId);
+				else {
+					console.log("Dat team do");
+					console.log(team);
+					seriesCallback(undefined, team.tournamentId);
+				}
 			});
 		},
 		// Check that this user hasn't already created a player for this tournament
@@ -37,12 +44,12 @@ function createPlayer( userId, teamId, finalCallback ) {
 				else if(count > 0) {
 					seriesCallback("This user has already created a player for this tournament");
 				} else {
-					seriesCallback();
+					seriesCallback(undefined, tournamentId);
 				}
 			});
 		},
 		// Check that user has a valid tempostorm account
-		function(callback) {
+		function(tournamentId, callback) {
 			UserSchema.findById(userId)
 			.select("bnetID paypalID tournamentBlacklisted")
 			.exec(function(err, user) {
@@ -51,29 +58,30 @@ function createPlayer( userId, teamId, finalCallback ) {
 				} else if(typeof user === "undefined") {
 					callback("Could not find user with provided id");
 				} else {
-					callback(undefined, user);
+					callback(undefined, tournamentId, user);
 				}
 			});
 		},
 		// Get the associated tournament
-		function(user, callback) {
+		function(tournamentId, user, callback) {
 			TournamentSchema.findById(tournamentId)
-			.select("playerBlacklist playerWhitelist regionName")
+			.select("userIdBlacklist userIdWhitelist regionName")
 			.exec(function(err, tournament) {
 				if(err) callback(err);
-				else if(typeof tournament === "undefined") {
-					callback("Failed to find tournament to associate this player");
-				} else {
+				else if(!tournament) callback("Unable to find tournament to associated with this team");
+				else {
+					console.log("Rainbow sunshine lollipops");
+					console.log(tournament);
 					callback(undefined, user, tournament);
 				}
 			});
 		},
 		// Check if the user has been tournament blacklisted
 		function(user, tournament, callback) {
-			if(tournament.playerWhitelist.indexOf(userId) !== -1) {
+			if(tournament.userIdWhitelist.indexOf(userId) !== -1) {
 				callback(undefined, tournament);
 			} else if(user.tournamentBlacklisted
-				|| tournament.playerBlacklist.indexOf(userId) !== -1) {
+				|| tournament.userIdBlacklist.indexOf(userId) !== -1) {
 				callback("Cannot add player. User is blacklisted");
 			} else {
 				callback(undefined, tournament, user);
@@ -117,7 +125,37 @@ function createPlayer( userId, teamId, finalCallback ) {
 	], finalCallback);
 }
 
+
+function removePlayer(playerId, finalCallback) {
+	if(typeof playerId !== "string") {
+		finalCallback("Unable to remove player with invalid playerId");
+		return;
+	}
+
+	async.waterfall([
+		// Get the associated player
+		function(seriesCallback) {
+			PlayerSchema.findById(playerId)
+			.select("teamId")
+			.exec(function(err, player) {
+				if(err) seriesCallback(err);
+				else if(!player) seriesCallback("Unable to find player with the id provided");
+				else seriesCallback(undefined, player);
+			})
+		},
+		// Remove the player from the team
+		function(player, seriesCallback) {
+			TeamSchema.findByIdAndUpdate(player.teamId, {$pull:{playerIds:playerId}}, function(err) {
+				seriesCallback(err, player);
+			})
+		}],
+	function(err) {
+		finalCallback(err);
+	});
+}
+
 // MAIN EXPORTS
 module.exports = {
-	createPlayer : createPlayer
+	createPlayer : createPlayer,
+	removePlayer : removePlayer
 }

@@ -6,6 +6,12 @@ var BracketSchema = require("./../model/tournamentBracket");
 var match = require("./match");
 
 
+
+
+
+// 	Creates a bracket with a tournament admin with the options specified
+//
+//	
 function createBracket( adminId, tournamentId, bracketOptions, roundOptions, finalCallback ) {
 
 	// Validate arguments
